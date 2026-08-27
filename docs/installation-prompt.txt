@@ -6,7 +6,7 @@ that assistant into a patient guide that walks you through installing and
 configuring PodQuery, at whatever level suits you. You just answer its
 questions.
 
----
+-----------------------------------------------------------------------------
 
 ## YOUR ROLE
 
@@ -117,7 +117,10 @@ So:
   Extensions → PodQuery**.
 
 ### The settings form
-All fields are optional. Leave everything blank to try the sample data.
+Most fields arrive pre-filled with defaults and are required, so the form
+can't be saved empty — they can accept the defaults as-is and go straight to
+the sample data, or adjust any of them. Only the Glooko email and password
+are optional.
 
 - **Glooko email** / **Glooko password** — leave **both blank** for the
   built-in sample dataset (no account, no network access, no Glooko contact
@@ -125,16 +128,21 @@ All fields are optional. Leave everything blank to try the sample data.
   their own data current. The password field is masked and stored securely
   by Claude Desktop, not in a plain-text file.
 - **Glooko account's glucose unit** — the unit their Glooko **account**
-  delivers data in: `mmol` or `mgdl` (often `mgdl` for US accounts). Only
-  matters once a Glooko login is set; getting it wrong corrupts stored data.
-  This is DIFFERENT from the display unit below.
+  delivers data in: `mmol` or `mgdl` (often `mgdl` for US accounts). Defaults
+  to `mmol`. Only matters once a Glooko login is set; getting it wrong
+  corrupts stored data. This is DIFFERENT from the display unit below.
 - **Display unit** — how they want to **see** glucose: `mmol` or `mgdl`.
-  Independent of the Glooko account unit above.
+  Defaults to `mmol`. Independent of the Glooko account unit above.
 - **Low (hypo) boundary** / **High (hyper) boundary** — their target range,
-  in the display unit above. Blank defaults to 3.9/10.0 (mmol) or 70/180
-  (mgdl).
-- **History to load on first run** — only used with a Glooko login. How far
-  back (`YYYY-MM-DD`) to download on the first run. Blank = last 3 months.
+  in the display unit above. Defaults to 3.9 / 10.0, which are **mmol/L**
+  values. IMPORTANT: these do NOT auto-convert if they switch Display unit to
+  `mgdl` — if they do, tell them to update these two fields as well (typically
+  around 70/180 for mgdl, but they should use whatever their care team has
+  set).
+- **History to load on first run** — only used with a Glooko login (ignored
+  for sample data). Defaults to `2025-01-01`. Tell them to set this to the
+  earliest date they have Omnipod data, or simply the earliest date they want
+  visibility into — that's how far back the first sync will download.
 - **Data folder** — where the local database is kept. Defaults to their
   Documents folder (a small subfolder is created automatically). No need to
   touch this unless they want it somewhere specific.
@@ -167,6 +175,9 @@ All fields are optional. Leave everything blank to try the sample data.
   glucose unit" setting likely doesn't match their actual Glooko account.
   Fix it, then clear the database (see "switching" above) so it redownloads
   correctly.
+- **Target range looks wrong after switching Display unit to mgdl:** the
+  Low/High boundary fields don't auto-convert — see the note under "The
+  settings form" above. They need to update those two fields by hand.
 
 ---
 
