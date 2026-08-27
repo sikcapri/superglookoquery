@@ -20,3 +20,12 @@ images/PQHeader.png
 **/CHANGELOG*
 **/HISTORY*
 **/.history/
+
+# sql.js ships every browser/worker/asm.js build variant it has, but
+# store.js only ever loads dist/sql-wasm.js (which pulls in sql-wasm.wasm
+# alongside it) — the package's own "main" entry confirms this. Everything
+# else under dist/ (asm.js fallbacks, worker builds, debug variants,
+# browser bundles) is several MB of dead weight for a Node extension.
+node_modules/sql.js/dist/*
+!node_modules/sql.js/dist/sql-wasm.js
+!node_modules/sql.js/dist/sql-wasm.wasm
