@@ -1,15 +1,27 @@
 <div align="center">
-  <img src="icon.png" alt="PodQuery icon" width="120">
+  <img src="images/PQHeader.png" alt="PodQuery" width="100%">
 </div>
 
-# PODQUERY (MCPB for Claude Desktop)
-**Clinical Audit & Triage Tool: connect your diabetes data directly to Claude**
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.2.1--poc-orange.svg)](https://github.com/rilhia/podquery-mcp/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](#who-this-is-for)
+[![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](#building-the-mcpb-yourself)
+
+</div>
+
+# PodQuery — Clinical Audit Tool for Claude Desktop
+**Connect your Glooko / Omnipod 5 diabetes data directly to Claude, and let it do the analysis.**
 
 > [!IMPORTANT]
 > **Not medical advice.** This tool is for understanding your data and helping you ask better questions of your diabetes care team. It is not a medical device and must never be used to make changes to your therapy. See the [full disclaimer](#disclaimer).
 
 > [!NOTE]
 > This is the **MCPB (MCP Bundle) edition**, built exclusively for **Claude Desktop**. It replaces the earlier Docker-based version of this project (which also supported Open WebUI and a raw web API) with a single `.mcpb` file you install with one click: no Docker, no terminal, no editing config files by hand. If you need the multi-platform Docker version instead, see the [original web app](https://github.com/rilhia/omni-endo-ai) or an earlier tag of this repository.
+
+> [!NOTE]
+> **Early proof-of-concept (v0.2.1).** PodQuery is under active development. The core tools and data pipeline are working end to end (this is my own real data behind the bundled sample set), but interfaces, defaults, and tool behaviour may still change between releases. Feedback and issues are very welcome.
 
 > [!TIP]
 > **Allergic to instructions? Let an AI do the talking.** 🤖
@@ -56,6 +68,7 @@ PodQuery exposes your diabetes history as a set of analytical tools Claude can c
 
 * **Summaries and trends:** time in range, GMI, variability, best and worst days and hours, basal/bolus balance, over any period you ask about.
 * **High-fidelity CGM data:** every 5-minute reading is captured, so no spike or dip is missed, but Claude is guided to pull *aggregates first* and only fetch raw readings when it genuinely needs them.
+* **Ready-made visual charts:** a clinical-report-style glucose chart, opened directly in your browser, with hoverable bolus markers and a per-day breakdown, not just numbers in a table.
 * **Enriched bolus analysis:** each bolus is matched with the glucose at the time and the pump settings (ISF, carb ratio, target) that were active, so Claude can judge whether a dose made sense.
 * **Omnipod 5 behaviour:** when the algorithm was suspending, running at max, or running blind after losing signal.
 
@@ -137,19 +150,22 @@ That's it — there is no separate build step, no container to start, and nothin
 <a id="configuring-your-settings"></a>
 ## ⚙️ Configuring Your Settings
 
-Claude Desktop generates a settings form for this extension automatically — there is no `.env` file to create or edit by hand. All fields are optional; leave everything blank to try the extension immediately against the bundled sample data.
+Claude Desktop generates a settings form for this extension automatically — there is no `.env` file to create or edit by hand. Most fields arrive **pre-filled with sensible defaults and marked required**, so the form can't be saved empty; you can accept the defaults as-is and start using the extension immediately against the bundled sample data, or adjust any of them to match your own setup. Only the **Glooko email and password** are optional — leave both blank to stay in offline sample-data mode.
 
 | Setting | What it does |
 |---|---|
-| **Glooko email** / **Glooko password** | Your Glooko login. Leave **both blank** to run in offline mode against the built-in 3-month sample dataset — no account needed, and Glooko is never contacted. Fill both in to download and keep your own data up to date. The password field is masked and stored securely by Claude Desktop. |
-| **Glooko account's glucose unit** | The unit your Glooko **account** delivers data in (`mmol` or `mgdl`, often `mgdl` for US accounts). Only matters once you've set a Glooko login above — getting it wrong corrupts stored data. This is separate from the display unit below. |
-| **Display unit** | How you want to **see** glucose: `mmol` (mmol/L) or `mgdl` (mg/dL). Independent from the Glooko account unit above — e.g. a US user on a `mgdl` Glooko account can still choose to view everything in `mmol`. |
-| **Low (hypo) boundary** / **High (hyper) boundary** | Your target range, in the display unit above. Leave blank for 3.9 / 10.0 (mmol) or 70 / 180 (mgdl). Every tool uses these by default; you (or Claude) can still ask about a different one-off threshold without changing this. |
-| **History to load on first run** | Only used once a Glooko login is set. How far back (`YYYY-MM-DD`) to download on the very first run. Leave blank for the last 3 months. |
-| **Data folder** | Where the extension keeps its local database of downloaded data. Defaults to your Documents folder (a small subfolder is created automatically there). This stays on your machine and survives extension updates. |
+| **Glooko email** / **Glooko password** | Your Glooko login. The only two optional fields. Leave **both blank** to run in offline mode against the built-in 3-month sample dataset — no account needed, and Glooko is never contacted. Fill both in to download and keep your own data up to date. The password field is masked and stored securely by Claude Desktop. |
+| **Glooko account's glucose unit** | The unit your Glooko **account** delivers data in (`mmol` or `mgdl`, often `mgdl` for US accounts). Defaults to `mmol`. Only matters once you've set a Glooko login above — getting it wrong corrupts stored data. This is separate from the display unit below. |
+| **Display unit** | How you want to **see** glucose: `mmol` (mmol/L) or `mgdl` (mg/dL). Defaults to `mmol`. Independent from the Glooko account unit above — e.g. a US user on a `mgdl` Glooko account can still choose to view everything in `mmol`. |
+| **Low (hypo) boundary** / **High (hyper) boundary** | Your target range, in the display unit above. Defaults to **3.9 / 10.0**, which are **mmol/L** values. Every tool uses these by default; you (or Claude) can still ask about a different one-off threshold without changing this. |
+| **History to load on first run** | Only used once a Glooko login is set (ignored in sample-data mode). Defaults to `2025-01-01`. Set this to the earliest date you have Omnipod data, or simply the earliest date you want visibility into — that's how far back the first sync will download. |
+| **Data folder** | Where the extension keeps its local database of downloaded data. Defaults to your Documents folder (a small `PodQuery` subfolder is created automatically inside it). This stays on your machine and survives extension updates. |
+
+> [!WARNING]
+> **If you set Display unit to `mgdl`, update the Low/High boundaries too.** They default to `3.9` / `10.0`, which are mmol/L values, and are **not** automatically converted when you switch units. For mg/dL, the equivalent target range is typically around `70` / `180` — adjust to whatever your care team has set for you.
 
 ### Trying it with the sample data (no Glooko account)
-Just leave the Glooko email and password blank and save. The extension serves the built-in 3-month sample database (the author's own real data, shared on purpose) and never contacts Glooko or the network.
+Just leave the Glooko email and password blank and save; the rest of the fields can stay on their defaults. The extension serves the built-in 3-month sample database (the author's own real data, shared on purpose) and never contacts Glooko or the network.
 
 ### Using your own Glooko data
 Fill in your Glooko email and password, set the Glooko account's glucose unit to match your actual Glooko account, and set your preferred display unit and target range. Your first question afterwards triggers a one-time download of your history (a few seconds to about a minute depending on how far back you asked it to go); after that, data is stored locally and answers are fast.
@@ -166,7 +182,7 @@ Fill in your Glooko email and password, set the Glooko account's glucose unit to
 
    > *"Tell me about my diabetes data."*
 
-Claude pulls the data and gives its interpretation. You can then discuss the findings, ask follow-ups, or drill into a specific day or excursion.
+Claude pulls the data and gives its interpretation. You can then discuss the findings, ask follow-ups, drill into a specific day or excursion, or ask for a chart — PodQuery opens a real, interactive glucose chart directly in your browser rather than just describing numbers.
 
 ---
 
@@ -201,6 +217,12 @@ Open **Settings → Extensions → PodQuery** and check the configured Glooko cr
 
 **Wrong-looking glucose numbers after connecting my own account.**
 Double-check "Glooko account's glucose unit" matches what your actual Glooko account is set to, not what you'd prefer to see (that's the separate "Display unit" field). A mismatch here corrupts how incoming readings are interpreted; if you already have data ingested under the wrong setting, clear the database (see [Switching from the Sample Data to Your Own](#switching-from-the-sample-data-to-your-own)) and let it redownload correctly.
+
+**My Low/High boundaries look wrong after switching to mg/dL.**
+The Low/High boundary fields don't auto-convert when you change Display unit — see the warning in [Configuring Your Settings](#configuring-your-settings). Update them by hand to match your unit.
+
+**A chart didn't open in my browser.**
+PodQuery tries to auto-open the chart file in your OS's default browser; if that fails (no recognised default-browser command on your machine), Claude will tell you the file path instead — open it manually. This is rare and typically only affects unusual system configurations.
 
 ---
 
@@ -240,7 +262,8 @@ Most tools accept optional `units`, `lower`, and `upper` parameters. If Claude o
 | `get_diabetes_summary` | The best starting point for any overview question. Fixed-size aggregates over any window, so it's cheap even across months or years. A deliberately wide call is also how Claude discovers the full date range your archive holds (`reportRange`). Returns glucose control (TIR, GMI, CV, stdDev), glucose extremes, best/worst day and hour, insulin, bolus architecture, carbs, and settings in force. |
 | `get_trend` | Splits a span into time buckets (day/week/month/quarter, or fixed-length) and computes each independently from raw readings, for "how have things changed month by month" style questions in one call. |
 | `get_glucose` | Individual timestamped CGM readings for a window, capped to 21 days, optionally filtered to `low` (hypos), `high` (hypers), `target`, or `all`. |
-| `get_chart_series` | Glucose downsampled to a target number of points for plotting, with a min/max band per point so spikes aren't lost, plus bolus event markers. Used whenever Claude draws you a chart. |
+| `get_chart_html` | **The primary way to see a chart.** Builds a full clinical-report-style glucose chart (colour-coded in-range/low/high trace, shaded target band, min/max spread, bolus markers hoverable in their own right, header stats, legend, tooltips), saves it to a file, and opens it directly in your browser. Accepts a `ranges` array to compare several non-contiguous dates on one chart. Multi-day windows get a Chronological/Overlay toggle and per-day filter chips (with stats that recalculate for whichever days are shown), plus a collapsible **"Day details"** panel per calendar day carrying that day's full clinical figures with plain-English tooltips. Plots every real reading at native ~5-minute resolution for a typical window (up to about a month); wider windows are lightly thinned by default — flagged via a `downsample` field in the response — and can be re-requested at full detail with the `resolution` parameter (`1` = every reading, `2` = every other one, and so on). |
+| `get_chart_series` | Glucose downsampled to a target number of points for plotting, with a min/max band per point so spikes aren't lost, plus bolus event markers. Returns raw chart data rather than a rendered page — used when Claude needs to build a custom visualisation itself, rather than the ready-made chart `get_chart_html` produces. |
 | `get_enriched_bolus_log` | Every bolus in a window (capped to 92 days), enriched with the interpolated CGM value at delivery and the ISF/carb-ratio/target/DIA active at that moment, plus delivered-vs-programmed and calculator overrides. Filterable by bolus class. |
 | `get_hourly_trends` | Time in range and average glucose pooled by clock-hour across a window — useful for the dawn phenomenon, consistent evening highs, and other time-of-day patterns. |
 | `get_basal_delivery` | What the Omnipod 5 algorithm was doing with basal delivery over time, as behavioural states (`normal` / `suspend` / `max` / `limited`), not units. |
@@ -260,8 +283,10 @@ There's also one MCP **prompt**, `clinical_auditor` ("Clinical auditor persona" 
 The data flows: Glooko → sync → store → range → analytics → tools → Claude.
 
 * **`manifest.json`** — the MCPB manifest: what Claude Desktop reads to install the extension, what settings it asks the user for, and how it launches `src/server.js`.
+* **`src/env.js`** — sanitizes the `user_config`-derived environment variables Claude Desktop injects, before anything else reads them. Must be the first import in `server.js`; see the file's own header comment for the specific Claude Desktop quirk it works around.
 * **`src/server.js`** — the MCP server and the tool definitions (what Claude Desktop launches over stdio). Thin wrappers around the analytics.
 * **`src/analytics.js`** — the heart: all the clinical maths and data shaping, written as pure functions.
+* **`src/chartHtml.js`** — renders the self-contained HTML page `get_chart_html` writes to disk: chart geometry, colour-coding, day segmentation, tooltips, and the Chronological/Overlay toggle all live here.
 * **`src/store.js`** — the SQLite archive (normalised rows, not raw Glooko blobs), backed by [sql.js](https://github.com/sql-js/sql.js) — a pure WebAssembly build of SQLite. This was chosen deliberately over Node's built-in `node:sqlite` or a native addon like `better-sqlite3`: as an MCPB, this server can be launched on macOS or Windows by whatever Node runtime Claude Desktop bundles, with no build step and no way to know its exact version ahead of time. A pure-WASM engine behaves identically everywhere Node runs. The one tradeoff is that sql.js is in-memory only, so `store.js` re-serialises the archive to disk itself after each write batch, rather than relying on SQLite's own file-backed journal.
 * **`src/paths.js`** — resolves where the archive lives (the user's configured "Data folder", defaulting to their Documents folder) and seeds the bundled sample database into place on a fresh, offline install.
 * **`src/range.js`** — the layer the tools call; answers from the local archive and tops up from Glooko only when needed. Offline mode is gated here.
@@ -286,6 +311,8 @@ npm install -g @anthropic-ai/mcpb
 mcpb pack                       # produces podquery-mcp.mcpb in this folder
 ```
 
+The repo also ships an [`.mcpbignore`](.mcpbignore) that trims repo-only content (docs, the GitHub README banner, unused `sql.js` build variants, and similar) from the packed bundle — you shouldn't need to touch it, but it's worth a look if you're curious what `mcpb pack` includes and why.
+
 Then install the resulting `.mcpb` file as described in [Installing the Extension](#installing-the-extension). See the [MCPB specification](https://github.com/modelcontextprotocol/mcpb) for how the bundle format works.
 
 ---
@@ -302,3 +329,5 @@ The MIT licence covers the **code**. The bundled sample database is the author's
 <a id="disclaimer"></a>
 ### Disclaimer
 *This tool is for informational and educational purposes only. It is not a medical device and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions regarding a medical condition. Any analysis produced with the help of this tool, including AI-generated suggestions, must be reviewed with a qualified clinical professional before making any changes to your insulin therapy or medical regimen.*
+</content>
+</invoke>
