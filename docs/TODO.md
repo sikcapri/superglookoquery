@@ -74,9 +74,16 @@ sense to tackle, though phases can overlap.
       `.gitkeep`), `lifestyle-features.json` not yet created (no lifestyle
       data path exists yet — see Phase 1's other pending items), plus a
       `README.md` documenting the entry format and contribution flow.
-- [ ] A documented (even if manual-for-now) promotion process: who reviews
-      registry contributions and decides when a field graduates from `extra`
-      to a typed column
+- [x] A documented (even if manual-for-now) promotion process:
+      `docs/PROMOTION.md`. Owner is the maintainer (manual, not automated,
+      by design — schema/ingestion changes deserve a human decision each
+      time). Concrete candidate criteria (2+ independent registry entries
+      for that component, or 1 under an explicit bootstrap exception since
+      the registry has zero entries today; plus a real tool/analysis that
+      needs it structured), a 6-step how-to for the migration itself, and a
+      promotion log table to track what's been promoted and why. Nested
+      fields (DESIGN.md's other open follow-up) explicitly deferred to the
+      first real nested-field candidate rather than guessed at now.
 
 ## Phase 2 — First real features on the new architecture
 

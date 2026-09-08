@@ -310,11 +310,10 @@ website.
   component may disagree on whether a field is populated. Needs a merge
   policy (e.g. "populated" wins if any contributed entry saw it populated)
   before the registry has more than a couple of entries per component.
-- **Promotion trigger ownership:** section 5's promotion path ("once
-  confirmed common enough") currently has no named owner or process, which
-  risks the `extra` column becoming a permanent graveyard. Needs a
-  maintainer process (periodic review of registry contributions), not just
-  a criterion.
+- ~~**Promotion trigger ownership**~~ — resolved, see `docs/PROMOTION.md`:
+  maintainer-driven, manual, with concrete candidate criteria and a
+  bootstrap exception for the period before the registry has independent
+  contributions.
 - **Nested fields in `extra`:** some discovered fields are structured
   sub-objects (e.g. CamAPS's mode-percentage block), not flat scalars.
   Promotion of a nested block to typed columns needs different handling
