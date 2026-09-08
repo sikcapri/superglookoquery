@@ -4,3 +4,7 @@ npm-debug.log
 *.local
 data/
 *.mcpb
+# store.js's persist() writes here before an atomic rename; a crash between
+# the write and the rename can orphan one (hit for real while regenerating
+# examples/podquery.db during development — see docs/TODO.md).
+*.tmp-*

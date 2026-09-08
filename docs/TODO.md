@@ -223,13 +223,51 @@ generalizing further.)
 - [ ] Synthetic mock Glooko response fixtures for a few different device
       shapes (hand-built, not real accounts) to test capability gating
       without needing real hardware for every combination
-- [ ] Confirm sql.js's in-memory/full-reserialize behavior isn't degraded by
-      the wider schema (row size, write frequency)
+- [x] Confirm sql.js's in-memory/full-reserialize behavior isn't degraded by
+      the wider schema — **found a real, if narrow, reliability edge while
+      building `scripts/generate-sample-data.mjs` (2026-09-09)**: calling an
+      ingest function (and therefore a COMMIT -> `persist()` ->
+      `rawDb.export()` cycle) **many times in rapid succession within one
+      process** (~450 cycles, one ingest call per day x ~5 categories x 90
+      days) intermittently corrupted the archive on this sql.js/WASM build
+      under Node 24 — reproducible on every run. The SAME total data
+      ingested via one call per category (~5 `persist()` cycles total, same
+      ~26k rows) succeeded reliably across dozens of repeated tries.
+      Root-caused down to "many persist() cycles in one process", not
+      transaction size, prepared-statement reuse, or any specific data
+      shape (all independently ruled out first). Not a fix to store.js
+      itself — a real Glooko sync never does anywhere near 450 persist
+      cycles in one process lifetime (each MCP session is its own process,
+      and a session syncs far less often than once per day), so this
+      doesn't look like a practical production risk. Worked around in the
+      generator by batching once per category instead of once per day; left
+      as a documented reliability edge for anyone who later needs many
+      ingest calls in one long-lived process (see the generator's own
+      header comment for the full account).
 - [ ] A manual test plan for a fresh install / cold-start flow, since that's
       what every new contributor's first run actually looks like
 
 ## Phase 4 — Documentation
 
+- [x] Regenerated the bundled `examples/podquery.db` sample database, found
+      broken while starting this phase: it had been created under an old
+      schema, and the very first open under the current
+      `SCHEMA_VERSION` silently wiped it to empty (the version-heal
+      self-repair logic correctly cleared old-schema data, but nothing
+      ever regenerated the shipped file afterward) — a real bug that would
+      have completely broken the "try it offline first" experience for any
+      new user with no Glooko login. Rebuilt via a new
+      `scripts/generate-sample-data.mjs`, generating entirely SYNTHETIC
+      data (a deliberate choice, not the maintainer's real data like
+      upstream PodQuery did — see the script's own header) through the
+      real `store.js` ingest functions, so it stays schema-compatible with
+      no manual updates needed on a future schema change. Verified: the
+      regenerated file survives being reopened, and produces sensible
+      output through the real `computeSummary()`/`discover.js` code paths
+      (97.9% TIR, a plausible basal/bolus split, a small clean discovery
+      report). Also added `.gitignore` coverage for `store.js`'s
+      `persist()` temp files, after several got orphaned on disk by
+      crashed runs while chasing the reliability issue above.
 - [ ] Rewrite `README.md` for the new project identity (still describes the
       original PodQuery/Omnipod-specific framing right now)
 - [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
