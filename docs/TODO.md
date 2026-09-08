@@ -121,17 +121,35 @@ generalizing further.)
       initial/extended split percentage and Glooko's own raw duration text,
       plus aggregate stats (split rate, average initial-delivery percent)
       over the whole bolus population in the window.
-- [ ] Capture CamAPS pump-mode breakdown (automatic/manual/boost/attempting
-      percentages) as the first genuinely device-specific, capability-gated
-      module — **blocked, now on a confirmed (not just suspected) gap**: the
-      same real sync above looked for this field in the account's actual
-      `cgm`/`bolus` `extra` data and found nothing resembling it. It likely
-      lives in basal/pump-state data instead (`deriveBasalStates()` in
-      `analytics.js`), which Phase 1's `extra`/`field_capability` capture
-      was never extended to — only `cgm` and `bolus` gained it. Building
-      this module needs that capture extended to a third category first, a
-      real scoped addition to the Phase 1 architecture, not a small
-      follow-up to this item.
+- [x] Capture CamAPS pump-mode breakdown as the first genuinely
+      device-specific, capability-gated module. **Found the real location
+      by probing the raw payload's top-level series/stats keys directly**
+      (structure only — key names, never values — same discipline as the
+      original Phase B probe): it's neither in `cgm`/`bolus` `extra` nor in
+      basal-state data as suspected, but in Glooko's own per-window stats
+      blob (`data2`) — `camapsPumpModeAutomaticPercentage`,
+      `ManualPercentage`, `EaseOffPercentage`, `BoostPercentage`,
+      `LibertyPercentage`, `AttemptingPercentage`, `DurationString`,
+      `PerModeDurationStrings`. Confirmed populated for this account (a
+      real fetch: 76% automatic, 24% attempting, etc.). `data2` is
+      deliberately never archived locally (`range.js`'s `getProcessedRange`
+      always returns `stats: null`, by design — it's a live, Glooko-computed
+      aggregate for whatever window is asked, not a fact about a point in
+      time), so this module's tool cannot be archive-backed like every
+      other tool here: `get_camaps_pump_mode_breakdown` always makes a live
+      Glooko call, documented as such in its own description.
+      Capability is tracked via a new generalised `recordFieldCapabilities()`
+      in `store.js`, called from `range.js`'s `pullAndIngest` (opportunistic,
+      byproduct of any sync) and its own live fetch — against a NEW `'stats'`
+      category (a category `field_capability` already supported generically;
+      no schema change needed). Passing the WHOLE `data2` blob (not just the
+      CamAPS keys) means this also incidentally seeds capability state for
+      every other stats field (carbs/exercise/weight/BP/etc.) for free,
+      groundwork for the still-unbuilt lifestyle-data module. Verified
+      end-to-end for real: a live fetch recorded the capability, and a stub
+      `registerCapabilityGatedModules()` call confirmed the tool actually
+      registers. `docs/DESIGN.md`/`docs/PROMOTION.md` updated to correct the
+      earlier (wrong) guess that this lived in basal data.
 - [ ] Submit the first real schema-registry entry (this account's own
       CamAPS FX + Ypso pump + Libre 3+ combo) — **no longer data-blocked**:
       a real sync now populates the archive under SCHEMA_VERSION 9, and
@@ -141,7 +159,12 @@ generalizing further.)
       `group`, `tooltipData` [nested, so excluded], `deviceName`). The split
       fields don't clear the 5-use/1%-rate reporting threshold for this
       account in a 30-day window — expected for a mostly-closed-loop user
-      who rarely manually splits a bolus, not a bug. **Still not run**: the
+      who rarely manually splits a bolus, not a bug. (`discover.js`'s report
+      does not currently cover the new `'stats'` category at all — it only
+      ever summarised `cgm`/`bolus` — so the CamAPS breakdown itself won't
+      appear in a registry entry yet either; that's a real, separate gap,
+      not urgent since a registry entry is about device capability
+      discovery, not this account's own live tool.) **Still not run**: the
       submission sequence's typed-confirmation step needs a human physically
       at a terminal (by design, not scriptable), and actually opening it
       submits a real PR to the public repo — both are for the user to

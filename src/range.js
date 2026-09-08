@@ -30,6 +30,7 @@ import {
   extractDailyInsulin,
   deriveBasalStates,
   extractDeviceEvents,
+  extractCamapsPumpModeBreakdown,
 } from './analytics.js';
 import {
   ensureDbReady,
@@ -45,6 +46,7 @@ import {
   getDailyInsulin,
   getBasalStates,
   getDeviceEvents,
+  recordFieldCapabilities,
 } from './store.js';
 // sync.js imports pullAndIngest + date helpers from THIS module. The cycle is
 // safe because both sides reference the imported bindings only inside functions
@@ -193,7 +195,38 @@ export async function pullAndIngest(startISO, endISO) {
   const todayStart = startOfTodayEpochSeconds();
   if (toEpoch >= todayStart) markDays([dayStr(todayStart)], false);
 
+  // Opportunistic capability capture for Glooko's per-window stats blob
+  // (data2) — it's never archived (see getProcessedRange's stats: null), so
+  // this is the only place its fields' presence can ever be recorded as a
+  // byproduct of a normal sync (DESIGN.md section 2a). Confirms whether this
+  // account has CamAPS pump-mode data at all, independent of whatever
+  // window the CALLER asked for — the module-registration check just needs
+  // "has this ever been seen," not this call's own numbers.
+  if (raw.data2) {
+    recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
+  }
+
   return { rawStats: raw.data2 };
+}
+
+/**
+ * Live fetch of the CamAPS pump-mode breakdown for an exact window. Unlike
+ * every other tool in this project, this one CANNOT be served from the
+ * local archive — Glooko computes these percentages server-side for
+ * whatever window is requested, and range.js deliberately never persists
+ * that blob (see getProcessedRange's stats: null and analytics.js's
+ * extractCamapsPumpModeBreakdown for the fuller rationale). Returns null in
+ * offline mode (no Glooko credentials) or if this account's data has none
+ * of these fields.
+ */
+export async function fetchCamapsPumpModeBreakdown(startISO, endISO) {
+  if (!glookoConfigured()) return null;
+  await ensureDbReady();
+  const raw = await fetchGlookoRange(startISO, endISO);
+  if (raw.data2) {
+    recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
+  }
+  return extractCamapsPumpModeBreakdown(raw.data2);
 }
 
 /**

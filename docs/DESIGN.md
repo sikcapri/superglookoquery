@@ -303,6 +303,27 @@ pass — the guardrail is on the content being reviewed and hash-verified
 before submission, not on requiring the human to manually use GitHub's
 website.
 
+## Third refinement (2026-09-09, same day) — a second capability shape
+
+Building the first capability-gated module (CamAPS pump-mode breakdown)
+against a real sync found that section 2's `extra`/`field_capability` design
+implicitly assumed all discoverable data arrives as per-record fields on a
+`cgm`/`bolus` timeline row. Glooko's per-window stats blob (internally
+`data2`) doesn't fit that shape at all: it's a live, server-computed
+aggregate for whatever window is requested, never a fact about a point in
+time, and this project deliberately never archives it (`range.js`'s
+`getProcessedRange` always returns `stats: null`). `field_capability`'s
+`(category, field_name)` schema turned out to already generalize to this
+without any schema change — a new `'stats'` category, recorded as a
+byproduct of any sync exactly like `cgm`/`bolus` — but the module that
+depends on it can't be archive-backed like every other tool here: it must
+make a live Glooko call every time it's actually used. Capability gating
+still decides whether the tool *exists* at all (same mechanism, same
+one-time-ever guarantee); it just can't answer any individual call from the
+local archive. See `docs/PROMOTION.md`'s log for the full account, including
+the wrong guesses (bolus field names, then "it must be in basal data") that
+preceded finding this.
+
 ## Known follow-ups (not blocking, to revisit during implementation)
 
 - **Registry conflict resolution:** given sampling error is the expected
@@ -314,8 +335,22 @@ website.
   maintainer-driven, manual, with concrete candidate criteria and a
   bootstrap exception for the period before the registry has independent
   contributions.
+- **`discover.js`'s report doesn't cover the `'stats'` category:**
+  `buildReport()`/`buildComponentReports()` only ever summarise `cgm`/
+  `bolus`. The CamAPS pump-mode fields (and everything else now tracked
+  under `'stats'`, see the third refinement above) won't appear in a
+  schema-registry contribution yet, even though local capability gating
+  already works for them. Not urgent — a registry entry is about
+  cataloguing device support, not this account's own live tool access — but
+  real, and needed before a `'stats'`-backed module could ever be
+  contributed to the registry.
 - **Nested fields in `extra`:** some discovered fields are structured
-  sub-objects (e.g. CamAPS's mode-percentage block), not flat scalars.
-  Promotion of a nested block to typed columns needs different handling
-  than promoting a scalar field; the current design doesn't distinguish the
-  two cases.
+  sub-objects, not flat scalars. Promotion of a nested block to typed
+  columns needs different handling than promoting a scalar field; the
+  current design doesn't distinguish the two cases. (This point originally
+  named "CamAPS's mode-percentage block" as the example — a 2026-09-09 real
+  sync found that field, but it turned out to live in Glooko's per-window
+  stats blob, never in `extra` at all, so it's not actually an instance of
+  this particular gap; see `docs/PROMOTION.md`'s log for the corrected
+  account. This follow-up is still open, just without a concrete example in
+  hand yet.)

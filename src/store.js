@@ -894,6 +894,36 @@ export function getTimeline(startEpoch, endEpoch) {
 }
 
 /**
+ * Record capability state for a category outside the normal cgm/bolus
+ * timeline path — same monotonic INSERT-DO-NOTHING guarantee as
+ * ingestTimeline's own inline recordCapabilities(), exposed standalone for
+ * data that never goes through ingestTimeline at all. First real use:
+ * Glooko's per-window stats blob (`data2`, e.g. CamAPS pump-mode
+ * percentages) isn't archived as records — see range.js's pullAndIngest —
+ * so its capability has nowhere else to be recorded as a byproduct of a
+ * normal sync.
+ */
+export function recordFieldCapabilities(category, fields, epoch) {
+  if (!fields) return;
+  const conn = d();
+  const capStmt = conn.prepare(
+    `INSERT INTO field_capability (category, field_name, first_seen_epoch, prompted)
+     VALUES (?, ?, ?, 0)
+     ON CONFLICT(category, field_name) DO NOTHING`
+  );
+  conn.exec('BEGIN');
+  try {
+    for (const [key, value] of Object.entries(fields)) {
+      if (isPopulatedValue(value)) capStmt.run(category, key, epoch);
+    }
+    conn.exec('COMMIT');
+  } catch (err) {
+    conn.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+/**
  * All field capabilities ever confirmed populated for this account —
  * DESIGN.md section 2a/4's runtime capability state. A capability-gated
  * module checks this (not a fresh sample) to decide whether its tools

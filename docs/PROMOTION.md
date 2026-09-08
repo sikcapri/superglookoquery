@@ -93,12 +93,14 @@ process doesn't make yet — one column per sub-field, or a single JSON column
 with dedicated query helpers. Treat the first real nested-field promotion
 candidate as the point to decide this, rather than guessing now with no real
 case in front of it. (DESIGN.md originally named "CamAPS's mode-percentage
-block" as the concrete example of a nested field. A real 2026-09-09 sync of
-this account found no such field anywhere in the cgm or bolus `extra` data —
-see the promotion log below. That reference was carried over from the
-original, less precise raw-payload inspection and was never itself
-re-verified; treat it as unconfirmed until a real capture actually shows it
-somewhere.)
+block" as the concrete example of a nested field, in the context of `extra`.
+A real 2026-09-09 sync found the actual field —
+`camapsPumpModePerModeDurationStrings` is a genuine nested object — but it
+lives in Glooko's per-window stats blob, never in `cgm`/`bolus` `extra` at
+all, so it never goes through `captureExtra()`/promotion in the first place;
+see the promotion log below. This process's own nested-field question is
+still open, just for a different field whenever one actually shows up in
+`extra`.)
 
 ## Promotion log
 
@@ -109,4 +111,5 @@ contributor checks before assuming a field is still `extra`-only.
 |------|----------|-----------|---------|-------|
 | 2026-09-09 | `initialDelivery`, `extendedDelivery`, `extendedBolusDuration` | pump (bolus) | Bootstrap exception | **Superseded same day, see next row.** Promoted from memory of DESIGN.md's Background section without checking against a real sync first — these exact names turned out to be real, but for a much rarer bolus shape (co-occurring with `isUnknownComboBolus`), so the columns almost never populated. |
 | 2026-09-09 | `initialDeliveryPercentage`, `extendedDeliveryPercentage`, `durationString` | pump (bolus) | Bootstrap exception (corrected) | A real sync of this account (SCHEMA_VERSION 9) confirmed these are the common-case field names — Glooko reports the split as a percentage pair directly. `durationString` is Glooko's own raw formatted text (e.g. "2h"), stored as TEXT, not parsed. The rarer raw-delivery shape from the row above (`initialDelivery`/`extendedDelivery`/`extendedBolusDuration`) is left in `extra`, not promoted — it's real but too rare in this account's data to justify a column yet. **Lesson**: confirm a field name against a real sync before promoting it, not from a design doc's memory of an inspection whose raw dump was (correctly, per this project's data-handling discipline) deleted after review. |
-| 2026-09-09 | (none — investigated, not promoted) | — | — | The same real sync also looked for the CamAPS pump-mode automatic/manual/boost/attempting breakdown DESIGN.md's Background section describes. It does not appear anywhere in this account's real `cgm` or `bolus` `extra` data. It likely lives in basal/pump-state data instead, which Phase 1's `extra`/`field_capability` capture was never extended to (only `cgm` and `bolus` gained it) — a real, separate follow-up before the CamAPS module can be built, not something to guess into the existing categories. |
+| 2026-09-09 | (superseded same day, see next row) | — | — | The same real sync looked for the CamAPS pump-mode breakdown in `cgm`/`bolus` `extra` and found nothing, then guessed it must live in basal/pump-state data instead. That guess was also never checked before being written down here — see the next row. |
+| 2026-09-09 | `camapsPumpModeAutomaticPercentage`/`ManualPercentage`/`EaseOffPercentage`/`BoostPercentage`/`LibertyPercentage`/`AttemptingPercentage`/`DurationString`/`PerModeDurationStrings` | stats (new category) | Discovered, not a promotion | A direct structural probe of the raw payload (top-level series/stats key names only, never values — same discipline as the original Phase B probe) found these in Glooko's own per-window stats blob (`data2`), not in basal data as guessed above. Confirmed populated for this account with a live fetch. `data2` is a live, Glooko-computed aggregate for whatever window is requested — this project deliberately never archives it (`range.js`'s `getProcessedRange` always returns `stats: null`) — so there is no local column to promote these fields TO; they stay a live-fetch-only tool (`get_camaps_pump_mode_breakdown`), capability-gated on a new `'stats'` category in `field_capability`. **Lesson (same one as the row above, twice in one day)**: a location guessed from a design doc's memory is not evidence: check the real payload's structure before writing either a field name or a category down. |

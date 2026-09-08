@@ -488,6 +488,61 @@ export function summariseSplitBolusStats(timeline, splitLog) {
   };
 }
 
+// Confirmed 2026-09-09 against a real sync of this account: these live in
+// Glooko's per-window stats blob (`data2`, called `stats` below), not in any
+// per-record cgm/bolus field — a fundamentally different shape from
+// everything else this file captures via `extra`. `data2` is Glooko's own
+// pre-aggregated figure for whatever window was requested, computed
+// server-side; it is NOT archived anywhere in this project (see range.js's
+// getProcessedRange, which always returns stats: null by design), so a
+// CamAPS pump-mode tool must fetch it live rather than read the local
+// archive. See DESIGN.md/PROMOTION.md for the fuller account.
+export const CAMAPS_PUMP_MODE_KEYS = [
+  'camapsPumpModeDurationString',
+  'camapsPumpModeAutomaticPercentage',
+  'camapsPumpModeManualPercentage',
+  'camapsPumpModeEaseOffPercentage',
+  'camapsPumpModeBoostPercentage',
+  'camapsPumpModeLibertyPercentage',
+  'camapsPumpModeAttemptingPercentage',
+  'camapsPumpModePerModeDurationStrings',
+];
+
+/**
+ * Pull the CamAPS pump-mode breakdown out of a raw `stats` (Glooko's data2)
+ * blob, or null if this account's data has none of these fields populated
+ * (a non-CamAPS pump, or CamAPS data Glooko hasn't computed for this
+ * window) — genuinely absent, not a record of all zeros. A real zero for
+ * one mode (e.g. this account never uses "liberty" mode) still counts as
+ * populated, per `isPopulatedValue`'s "0 and false are data" rule; only
+ * null/undefined fields are absent.
+ *
+ * Percentages are Glooko's own figures and are not guaranteed to sum to
+ * 100 — "attempting" appears to overlap with "automatic" in practice
+ * rather than being a disjoint category, so treat each percentage
+ * independently rather than assuming a clean partition.
+ */
+export function extractCamapsPumpModeBreakdown(stats) {
+  if (!stats) return null;
+  // Local copy of store.js's isPopulatedValue rule (0/false count, null/
+  // undefined/NaN/empty-string don't) — this file deliberately has no
+  // imports (see its header comment), so the tiny check is duplicated
+  // rather than pulled in across that boundary.
+  const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
+  const hasAny = CAMAPS_PUMP_MODE_KEYS.some((k) => isPopulated(stats[k]));
+  if (!hasAny) return null;
+  return {
+    durationCovered: stats.camapsPumpModeDurationString ?? null,
+    automaticPercent: numOrNull(stats.camapsPumpModeAutomaticPercentage),
+    manualPercent: numOrNull(stats.camapsPumpModeManualPercentage),
+    easeOffPercent: numOrNull(stats.camapsPumpModeEaseOffPercentage),
+    boostPercent: numOrNull(stats.camapsPumpModeBoostPercentage),
+    libertyPercent: numOrNull(stats.camapsPumpModeLibertyPercentage),
+    attemptingPercent: numOrNull(stats.camapsPumpModeAttemptingPercentage),
+    perModeDurations: stats.camapsPumpModePerModeDurationStrings ?? null,
+  };
+}
+
 /**
  * Computes the full aggregate summary for a window: the glucose-control,
  * insulin-delivery, bolus-architecture, best/worst day and hour figures that

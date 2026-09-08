@@ -50,6 +50,7 @@ import {
   assertWithinCap,
   spanDays,
   CAPS,
+  fetchCamapsPumpModeBreakdown,
 } from './range.js';
 import { resolveChartsDir } from './paths.js';
 import { ensureDbReady, getFieldCapabilities } from './store.js';
@@ -73,6 +74,36 @@ import {
 } from './analytics.js';
 import { renderChartHtml } from './chartHtml.js';
 import { PERSONA_PROMPT } from './prompt.js';
+
+// Module-scope (not inside createServer()) deliberately: these are pure
+// helpers with no dependency on a particular server instance, and the
+// capability-gated modules below (registered after createServer() has
+// already closed, see GATED_MODULES) need them too.
+const startDesc =
+  'Required. Window start as an ISO 8601 timestamp, e.g. ' +
+  '2026-06-19T00:00:00.000Z. IMPORTANT: despite the trailing "Z", this is ' +
+  'plain WALL CLOCK time, not true UTC — Glooko records only the literal ' +
+  'date/time the patient\'s device showed, with no timezone attached. Use ' +
+  'the patient\'s own wall-clock digits directly (no conversion): resolve ' +
+  '"yesterday" or "last 3 weeks" straight into the matching wall-clock date ' +
+  'and time. Treated as inclusive.';
+const endDesc =
+  'Required. Window end as an ISO 8601 timestamp, e.g. ' +
+  '2026-06-20T00:00:00.000Z — plain wall clock time, same caveat as start ' +
+  '(the "Z" is a format artifact, not a UTC claim). Treated as inclusive and ' +
+  'must be after start. All timestamps returned by this API are likewise ' +
+  'plain wall clock time, unconverted.';
+
+function jsonResult(obj) {
+  return { content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] };
+}
+
+function errorResult(message) {
+  return {
+    isError: true,
+    content: [{ type: 'text', text: message }],
+  };
+}
 
 // A FACTORY, not a singleton. Each transport (each stdio process, or each HTTP
 // session) needs its OWN McpServer: the SDK forbids connecting one server to
@@ -156,31 +187,6 @@ const upperSchema = z
       'only to override for this one call.'
   );
 
-const startDesc =
-  'Required. Window start as an ISO 8601 timestamp, e.g. ' +
-  '2026-06-19T00:00:00.000Z. IMPORTANT: despite the trailing "Z", this is ' +
-  'plain WALL CLOCK time, not true UTC — Glooko records only the literal ' +
-  'date/time the patient\'s device showed, with no timezone attached. Use ' +
-  'the patient\'s own wall-clock digits directly (no conversion): resolve ' +
-  '"yesterday" or "last 3 weeks" straight into the matching wall-clock date ' +
-  'and time. Treated as inclusive.';
-const endDesc =
-  'Required. Window end as an ISO 8601 timestamp, e.g. ' +
-  '2026-06-20T00:00:00.000Z — plain wall clock time, same caveat as start ' +
-  '(the "Z" is a format artifact, not a UTC claim). Treated as inclusive and ' +
-  'must be after start. All timestamps returned by this API are likewise ' +
-  'plain wall clock time, unconverted.';
-
-function jsonResult(obj) {
-  return { content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] };
-}
-
-function errorResult(message) {
-  return {
-    isError: true,
-    content: [{ type: 'text', text: message }],
-  };
-}
 
 // --- get_chart_html point budget -------------------------------------------
 // get_chart_html writes its page straight to a file and opens it in the
@@ -1467,16 +1473,61 @@ server.registerPrompt(
 // "a module just switched on" signal rather than something the client has to
 // poll for.
 //
-// No gated module exists yet — Phase 2 (docs/TODO.md) adds the first one
-// (a CamAPS pump-mode breakdown tool gated on the camapsPumpMode* fields).
-// This array is where that entry goes; the mechanism below is what makes
-// adding it a matter of describing requirements, not writing new plumbing.
+// First real gated module: CamAPS pump-mode breakdown. Confirmed 2026-09-09
+// against a real sync — these fields live in Glooko's per-window stats blob
+// ('stats' category, recorded as a byproduct of any sync — see range.js's
+// pullAndIngest/fetchCamapsPumpModeBreakdown), not in cgm/bolus records like
+// everything else this project captures. The tool itself still can't read
+// the local archive for this data (Glooko computes it fresh per window and
+// this project never persists it) — registration just confirms the
+// capability exists at all; the actual call is always a live fetch.
 const GATED_MODULES = [
-  // {
-  //   name: 'camaps_pump_mode',
-  //   requires: [{ category: 'bolus', fieldName: 'camapsPumpModeAutomaticPercentage' }],
-  //   register: (server) => { server.registerTool('get_pump_mode_breakdown', { ... }, async () => { ... }); },
-  // },
+  {
+    name: 'camaps_pump_mode',
+    requires: [{ category: 'stats', fieldName: 'camapsPumpModeAutomaticPercentage' }],
+    register: (srv) => {
+      srv.registerTool(
+        'get_camaps_pump_mode_breakdown',
+        {
+          title: 'CamAPS pump-mode breakdown',
+          description:
+            'How much of the window CamAPS FX spent in each of its own operating ' +
+            'modes: automatic (closed-loop dosing), manual, easeOff, boost, liberty, ' +
+            'and attempting (the algorithm trying to resume closed-loop control). ' +
+            'This is CamAPS-specific — it only appears at all for an account whose ' +
+            'data has ever shown it, which is why this tool is not always present.\n\n' +
+            'UNLIKE every other tool here, this makes a LIVE call to Glooko every ' +
+            'time it is called — Glooko computes these percentages fresh for ' +
+            'whatever window is requested, and this project does not (cannot ' +
+            'usefully) archive them locally. Expect it to be slower than the ' +
+            'archive-backed tools, and expect a network/login error here ' +
+            'specifically if Glooko is briefly unreachable.\n\n' +
+            'Percentages are Glooko\'s own figures and are NOT guaranteed to sum to ' +
+            '100 — "attempting" appears to overlap with "automatic" rather than ' +
+            'being a disjoint category, so read each one independently.\n\n' +
+            'Returns: window, durationCovered (Glooko\'s own summary of the span, ' +
+            'e.g. "34d 23h"), automaticPercent/manualPercent/easeOffPercent/' +
+            'boostPercent/libertyPercent/attemptingPercent, and perModeDurations ' +
+            '(Glooko\'s raw per-mode duration text). Returns breakdown: null (not ' +
+            'an error) if Glooko has nothing for this exact window.',
+          inputSchema: {
+            start: z.string().describe(startDesc),
+            end: z.string().describe(endDesc),
+          },
+        },
+        async ({ start, end }) => {
+          try {
+            const s = assertIsoDate(start, 'start');
+            const e = assertIsoDate(end, 'end');
+            const breakdown = await fetchCamapsPumpModeBreakdown(s, e);
+            return jsonResult({ window: { start: s, end: e }, breakdown });
+          } catch (err) {
+            return errorResult(err.message);
+          }
+        }
+      );
+    },
+  },
 ];
 
 /**
