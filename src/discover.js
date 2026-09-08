@@ -22,6 +22,7 @@
 
 import { ensureDbReady, getTimeline, isPopulatedValue } from './store.js';
 import { resolveDbPath } from './paths.js';
+import { pathToFileURL } from 'url';
 
 const MIN_WINDOW_DAYS = 30;
 const MIN_POPULATED_COUNT = 5;
@@ -251,12 +252,16 @@ export function renderReportText(report) {
   return lines.join('\n');
 }
 
-// CLI entry point: `node src/discover.js`
-if (import.meta.url === `file://${process.argv[1]}`) {
+// CLI entry point: `node src/discover.js`. Guarded with pathToFileURL()
+// rather than a naive `file://${process.argv[1]}` string comparison — the
+// naive form is broken on Windows (argv[1] is a raw backslash path with no
+// URL encoding, so it can never equal import.meta.url) and silently produced
+// zero output there; see server.js's own guard for the fuller account.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const report = await buildReport();
   console.log(renderReportText(report));
   console.log(
-    '\n(This is a preview only — the submit/confirmation flow that lets you\n' +
-    'actually contribute this to the schema registry is not built yet.)'
+    '\n(This is a preview only. To actually contribute this to the schema ' +
+    'registry, run: node src/submit-registry-entry.js)'
   );
 }

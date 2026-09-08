@@ -43,6 +43,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { pathToFileURL } from 'url';
 
 import {
   getProcessedRange,
@@ -1567,7 +1568,17 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[superglookoquery] Fatal:', err);
-  process.exit(1);
-});
+// Only run as the actual MCP entrypoint (`node src/server.js` / `npm start` /
+// Claude Desktop's own launch), never as a side effect of another module
+// importing this file (e.g. this project's own test suite, which imports
+// registerCapabilityGatedModules directly). A naive `import.meta.url ===
+// \`file://${process.argv[1]}\`` string comparison — used briefly elsewhere
+// in this project's early CLI scripts — is BROKEN on Windows: argv[1] is a
+// raw backslash path with no URL encoding, so it never equals import.meta.url
+// no matter what. pathToFileURL() does the conversion correctly cross-platform.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  main().catch((err) => {
+    console.error('[superglookoquery] Fatal:', err);
+    process.exit(1);
+  });
+}

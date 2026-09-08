@@ -172,10 +172,54 @@ generalizing further.)
 
 ## Phase 3 — Testing
 
-- [ ] Unit tests for the new ingestion/schema logic
-- [ ] **Heaviest test coverage on the discover/redaction path specifically**
-      — a bug here is a privacy incident, not just a bug. Test the allowlist
-      builder against deliberately hostile/unexpected input shapes.
+- [x] Test runner: Node's own built-in `node:test`/`node:assert` (Node 24,
+      already the minimum this project needs) — no new dependency, no build
+      step, consistent with the MCPB's own "just `node src/server.js`"
+      philosophy. `npm test` runs `node --test test/*.test.js` (the glob
+      form, not a bare directory path — `node --test test/` mis-resolves on
+      this Node version; verified working from both bash and real
+      PowerShell).
+- [x] Unit tests for the new ingestion/schema logic:
+      `test/store.test.js` (typed-column + `extra` round-trip,
+      `field_capability` monotonicity and "0/false still counts as
+      populated", `recordFieldCapabilities()` standalone), `test/
+      analytics.test.js` (the confirmed-real bolus split field names —
+      pins the SCHEMA_VERSION 9 fix so it can't silently regress back to
+      the wrong guess — plus `extractCamapsPumpModeBreakdown`), `test/
+      server.test.js` (the actual production `registerCapabilityGatedModules`
+      against the real CamAPS module: registers when confirmed, genuinely
+      absent when not, an unrelated capability doesn't falsely satisfy it).
+- [x] **Heaviest test coverage on the discover/redaction path specifically**
+      — `test/discover.test.js`: both threshold axes (count AND rate) independently
+      confirmed to gate correctly, reported examples proven to be the fixed
+      synthetic placeholder even when the real underlying value is a
+      deliberately distinctive "real-looking" number/string (and asserted
+      absent from the rendered report text entirely, not just the
+      structured field), nested fields flagged not guessed at,
+      `lowConfidence` and `buildComponentReports`'s real-deviceName/slug
+      behavior. `test/submit-registry-entry.test.js` covers the gating
+      sequence itself: `scanForLeakage` against both a clean entry and
+      multiple adversarial ones (a real-looking leaked value, an
+      unrecognised type, an out-of-range rate, an implausibly long
+      deviceName), canonical-hash stability, and `writeAndVerify`'s three
+      real paths (clean write, mismatch-with-nothing-pre-existing, and the
+      no-destroy-a-pre-existing-file case that was a real bug caught during
+      Phase 1's manual testing — now a permanent regression test rather
+      than a one-off manual check).
+- [x] **Found and fixed a real, separate bug while writing the server.js
+      test**: `server.js`, `discover.js`, and `submit-registry-entry.js`
+      each guarded their CLI/main entrypoint with a naive
+      `import.meta.url === \`file://${process.argv[1]}\`` string
+      comparison — broken on Windows (a raw backslash path can never equal
+      a `file://` URL), so `node src/discover.js` and `node
+      src/submit-registry-entry.js` silently produced NO output at all on
+      this project's actual development platform, and importing `server.js`
+      from anywhere (including this test suite) unconditionally started a
+      real stdio server with no way to opt out. Fixed all three with
+      `pathToFileURL(process.argv[1] || '').href`, the correct
+      cross-platform comparison. Verified: the real CLI commands now
+      produce output, and `node src/server.js` (the actual Claude
+      Desktop/`npm start` launch command) still works unchanged.
 - [ ] Synthetic mock Glooko response fixtures for a few different device
       shapes (hand-built, not real accounts) to test capability gating
       without needing real hardware for every combination

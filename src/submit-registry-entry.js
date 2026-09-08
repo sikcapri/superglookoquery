@@ -29,6 +29,7 @@ import path from 'path';
 import crypto from 'crypto';
 import readline from 'readline';
 import { execFileSync } from 'child_process';
+import { pathToFileURL } from 'url';
 import { buildComponentReports } from './discover.js';
 
 const REQUIRED_PHRASE = 'I have reviewed this and confirm it contains no personal data';
@@ -335,6 +336,9 @@ async function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL(), not a naive `file://${process.argv[1]}` string
+// comparison — the naive form is broken on Windows and silently never
+// matches; see server.js's own guard for the fuller account.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   main();
 }
