@@ -532,22 +532,20 @@ server.registerTool(
       'Every SPLIT (extended/dual-wave) bolus in the window — one with a real ' +
       'extended-delivery portion, not a normal single-shot dose — plus aggregate ' +
       'stats over the whole bolus population for the same window.\n\n' +
-      'Each logged bolus carries initialDelivery (the up-front units), ' +
-      'extendedDelivery (delivered over the extended portion), ' +
-      'extendedBolusDurationRaw (Glooko\'s raw duration value for that extended ' +
-      'portion — its unit is not yet confirmed against a real sync, see ' +
-      'docs/PROMOTION.md, so treat it as an uncalibrated relative figure rather ' +
-      'than assuming minutes), and initialPercent (initialDelivery as a percent ' +
-      'of total delivered, so a 60/40 split reads as initialPercent: 60).\n\n' +
+      'Each logged bolus carries initialDeliveryPercent and ' +
+      'extendedDeliveryPercent (Glooko reports the split directly as a percent ' +
+      'pair, e.g. 60/40), and durationString, Glooko\'s own raw formatted text ' +
+      'for the extended portion\'s duration (e.g. "2h") — passed through as-is, ' +
+      'not parsed, since no confirmed format spec exists for it across devices.\n\n' +
       'Use it to see whether/how often splitting is actually used, and whether ' +
-      'the split ratio or duration correlates with post-meal control (pair with ' +
+      'the split ratio correlates with post-meal control (pair with ' +
       'get_meal_window_analysis on individual events).\n\n' +
       `Capped to ${CAPS.bolusMaxDays} days per call. Times are plain wall clock ` +
       'time (device-local), not UTC.\n\n' +
       'Returns: window, stats (totalBoluses, splitCount, splitRatePercent, ' +
-      'avgExtendedDurationRaw, avgInitialPercent — all null/0 for a window with ' +
-      'no split boluses, which is a normal result, not an error), and a boluses ' +
-      'array of the split events themselves.',
+      'avgInitialDeliveryPercent — all null/0 for a window with no split ' +
+      'boluses, which is a normal result for an automated closed-loop user, not ' +
+      'an error), and a boluses array of the split events themselves.',
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),

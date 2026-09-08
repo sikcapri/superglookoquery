@@ -104,42 +104,48 @@ sense to tackle, though phases can overlap.
 generalizing further.)
 
 - [x] Capture bolus split/extended-delivery fields — promoted
-      `initialDelivery`/`extendedDelivery`/`extendedBolusDuration` from
-      `extra` to typed columns (SCHEMA_VERSION 8, `docs/PROMOTION.md`'s
-      bootstrap exception). The 4th field DESIGN.md's Background section
-      calls "percentages" was deliberately NOT promoted — no confirmed real
-      field name exists for it (the original raw-payload probe was
-      inspected and its dump deleted per this project's own data-handling
-      discipline; nothing recorded its exact key). Verified with a
-      realistic synthetic `processUnifiedGlookoData()` input: the 3 fields
-      land as typed properties and are correctly excluded from `extra`.
+      `initialDeliveryPercentage`/`extendedDeliveryPercentage`/`durationString`
+      from `extra` to typed columns (SCHEMA_VERSION 9, `docs/PROMOTION.md`'s
+      bootstrap exception). **A real sync of this account was run** (the
+      project's actual archive, not a synthetic test) to confirm this: the
+      first attempt (SCHEMA_VERSION 8) guessed `initialDelivery`/
+      `extendedDelivery`/`extendedBolusDuration` from memory of DESIGN.md's
+      Background section, without checking against real data first — those
+      turned out to be real, but for a much rarer bolus shape, so the
+      columns almost never populated. Corrected once real evidence existed;
+      see `docs/PROMOTION.md`'s log for the full account. The rarer
+      raw-delivery shape stays in `extra` for now.
 - [x] A tool exposing split-bolus history/analysis: `get_split_bolus_log`
       in `server.js` (`buildSplitBolusLog()` / `summariseSplitBolusStats()`
       in `analytics.js`) — logs each split/extended bolus with its
-      initial/extended units and split percentage, plus aggregate stats
-      (split rate, average duration, average split percent) over the whole
-      bolus population in the window. `extendedBolusDuration`'s unit is
-      explicitly flagged unconfirmed in the tool's own description rather
-      than assumed.
+      initial/extended split percentage and Glooko's own raw duration text,
+      plus aggregate stats (split rate, average initial-delivery percent)
+      over the whole bolus population in the window.
 - [ ] Capture CamAPS pump-mode breakdown (automatic/manual/boost/attempting
       percentages) as the first genuinely device-specific, capability-gated
-      module — **blocked**: same problem as "percentages" above, but for
-      the whole module. No confirmed real field name exists for these
-      fields — DESIGN.md only ever describes them, never records the exact
-      key(s) a real CamAPS payload uses. `camapsPumpModeAutomaticPercentage`
-      appearing as the illustrative example in `server.js`'s `GATED_MODULES`
-      comment is exactly that: illustrative, invented for the gating-
-      mechanism smoke test, not a verified field name. Building this module
-      for real needs a fresh look at a real CamAPS payload first (a live,
-      carefully-scoped Glooko sync under the current code, the same kind of
-      one-off probe the original Phase B investigation did) — not
-      something to guess into the schema.
+      module — **blocked, now on a confirmed (not just suspected) gap**: the
+      same real sync above looked for this field in the account's actual
+      `cgm`/`bolus` `extra` data and found nothing resembling it. It likely
+      lives in basal/pump-state data instead (`deriveBasalStates()` in
+      `analytics.js`), which Phase 1's `extra`/`field_capability` capture
+      was never extended to — only `cgm` and `bolus` gained it. Building
+      this module needs that capture extended to a third category first, a
+      real scoped addition to the Phase 1 architecture, not a small
+      follow-up to this item.
 - [ ] Submit the first real schema-registry entry (this account's own
-      CamAPS FX + Ypso pump + Libre 3+ combo) — **blocked on the same real-
-      sync gap**: the archive has no data ingested under the current
-      (SCHEMA_VERSION 8) code yet, so there is no real `field_capability`/
-      `extra` evidence yet to build a genuine report from. This is the
-      project's own bootstrap contribution once unblocked.
+      CamAPS FX + Ypso pump + Libre 3+ combo) — **no longer data-blocked**:
+      a real sync now populates the archive under SCHEMA_VERSION 9, and
+      `node src/submit-registry-entry.js` would produce a real report for
+      `cgm` (`mealTag`, `value`, `timestamp`, `calculated`, all ~100%
+      populated) and `pump` (`highestBolusValue`, `timestamp`, `type`,
+      `group`, `tooltipData` [nested, so excluded], `deviceName`). The split
+      fields don't clear the 5-use/1%-rate reporting threshold for this
+      account in a 30-day window — expected for a mostly-closed-loop user
+      who rarely manually splits a bolus, not a bug. **Still not run**: the
+      submission sequence's typed-confirmation step needs a human physically
+      at a terminal (by design, not scriptable), and actually opening it
+      submits a real PR to the public repo — both are for the user to
+      decide to do, not something to run as a side effect of other work.
 
 ## Phase 3 — Testing
 

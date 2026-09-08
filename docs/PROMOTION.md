@@ -87,13 +87,18 @@ Promoting a field is a normal schema-migration change, done by hand:
 ## Nested fields — not yet handled
 
 DESIGN.md's "Known follow-ups" already flags this: some `extra` fields are
-structured sub-objects (CamAPS's mode-percentage block is the concrete
-example), not flat scalars, and `captureExtra()` stores them as-is without
-flattening. Promoting a nested block needs a decision this process doesn't
-make yet — one column per sub-field, or a single JSON column with dedicated
-query helpers. Treat the first real nested-field promotion candidate as the
-point to decide this, rather than guessing now with no real case in front of
-it.
+structured sub-objects, not flat scalars, and `captureExtra()` stores them
+as-is without flattening. Promoting a nested block needs a decision this
+process doesn't make yet — one column per sub-field, or a single JSON column
+with dedicated query helpers. Treat the first real nested-field promotion
+candidate as the point to decide this, rather than guessing now with no real
+case in front of it. (DESIGN.md originally named "CamAPS's mode-percentage
+block" as the concrete example of a nested field. A real 2026-09-09 sync of
+this account found no such field anywhere in the cgm or bolus `extra` data —
+see the promotion log below. That reference was carried over from the
+original, less precise raw-payload inspection and was never itself
+re-verified; treat it as unconfirmed until a real capture actually shows it
+somewhere.)
 
 ## Promotion log
 
@@ -102,4 +107,6 @@ contributor checks before assuming a field is still `extra`-only.
 
 | Date | Field(s) | Component | Trigger | Notes |
 |------|----------|-----------|---------|-------|
-| 2026-09-09 | `initialDelivery`, `extendedDelivery`, `extendedBolusDuration` | pump (bolus) | Bootstrap exception | The original motivating question for this fork. `extendedBolusDuration`'s unit is not yet confirmed against a real sync — see `store.js`'s column comment. A fourth field DESIGN.md's Background section vaguely calls "percentages" was deliberately NOT promoted here: no confirmed real field name for it exists yet, and guessing one into the schema would be worse than leaving it in `extra` a while longer. |
+| 2026-09-09 | `initialDelivery`, `extendedDelivery`, `extendedBolusDuration` | pump (bolus) | Bootstrap exception | **Superseded same day, see next row.** Promoted from memory of DESIGN.md's Background section without checking against a real sync first — these exact names turned out to be real, but for a much rarer bolus shape (co-occurring with `isUnknownComboBolus`), so the columns almost never populated. |
+| 2026-09-09 | `initialDeliveryPercentage`, `extendedDeliveryPercentage`, `durationString` | pump (bolus) | Bootstrap exception (corrected) | A real sync of this account (SCHEMA_VERSION 9) confirmed these are the common-case field names — Glooko reports the split as a percentage pair directly. `durationString` is Glooko's own raw formatted text (e.g. "2h"), stored as TEXT, not parsed. The rarer raw-delivery shape from the row above (`initialDelivery`/`extendedDelivery`/`extendedBolusDuration`) is left in `extra`, not promoted — it's real but too rare in this account's data to justify a column yet. **Lesson**: confirm a field name against a real sync before promoting it, not from a design doc's memory of an inspection whose raw dump was (correctly, per this project's data-handling discipline) deleted after review. |
+| 2026-09-09 | (none — investigated, not promoted) | — | — | The same real sync also looked for the CamAPS pump-mode automatic/manual/boost/attempting breakdown DESIGN.md's Background section describes. It does not appear anywhere in this account's real `cgm` or `bolus` `extra` data. It likely lives in basal/pump-state data instead, which Phase 1's `extra`/`field_capability` capture was never extended to (only `cgm` and `bolus` gained it) — a real, separate follow-up before the CamAPS module can be built, not something to guess into the existing categories. |

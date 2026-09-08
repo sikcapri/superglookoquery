@@ -314,12 +314,21 @@ export function processUnifiedGlookoData(rawJson) {
       override,
       class: cat,
       // Split/extended-delivery fields — promoted from `extra` under
-      // PROMOTION.md's bootstrap exception (SCHEMA_VERSION 8). Present on
-      // every bolus record per DESIGN.md's Background section, though a
-      // non-extended bolus naturally has null/zero extendedDelivery.
-      initialDelivery: numOrNull(b.initialDelivery),
-      extendedDelivery: numOrNull(b.extendedDelivery),
-      extendedBolusDuration: numOrNull(b.extendedBolusDuration),
+      // PROMOTION.md's bootstrap exception (SCHEMA_VERSION 9). A real sync
+      // of this account confirmed the common-case field names are
+      // initialDeliveryPercentage/extendedDeliveryPercentage/durationString
+      // (a string, e.g. "2h") — Glooko reports the split as a percentage
+      // pair directly, not raw delivered units. A SEPARATE, rarer bolus
+      // shape (co-occurring with a real `isUnknownComboBolus` flag) instead
+      // carries initialDelivery/extendedDelivery/extendedBolusDuration —
+      // the exact names this fork's original SCHEMA_VERSION 8 promotion
+      // guessed, which happened to be real but for the wrong (much rarer)
+      // case, and so barely ever populated. That second shape is left in
+      // `extra` for now rather than promoted alongside this one — see
+      // PROMOTION.md's log for the full account and the follow-up.
+      initialDeliveryPercentage: numOrNull(b.initialDeliveryPercentage),
+      extendedDeliveryPercentage: numOrNull(b.extendedDeliveryPercentage),
+      durationString: b.durationString ?? null,
       extra: captureExtra(b, BOLUS_KNOWN_KEYS),
       time: new Date(b.x * 1000).toISOString(),
     };
@@ -436,35 +445,32 @@ export function buildEnrichedBolusLog(timeline, settingsHistory, units = 'mmol')
 
 /**
  * Split/extended-delivery bolus log — the original motivating question for
- * this fork, now that initialDelivery/extendedDelivery/extendedBolusDuration
- * are typed columns (docs/PROMOTION.md's bootstrap promotion, SCHEMA_VERSION
- * 8), not buried in `extra`.
+ * this fork, now that initialDeliveryPercentage/extendedDeliveryPercentage/
+ * durationString are typed columns (docs/PROMOTION.md's bootstrap promotion,
+ * SCHEMA_VERSION 9), not buried in `extra`. Confirmed against a real sync of
+ * this account — Glooko already reports the split as a percentage pair
+ * directly, not as raw delivered units to derive a percentage from.
  *
  * A bolus counts as "split" here when it has a real, positive
- * extendedDelivery — a normal (non-split) bolus naturally has
- * extendedDelivery null/0, which isn't an error, just "wasn't split," so
- * `> 0` alone (true for neither null nor undefined) is the whole filter.
+ * extendedDeliveryPercentage — a normal (non-split) bolus naturally has it
+ * null/0, which isn't an error, just "wasn't split," so `> 0` alone (true
+ * for neither null nor undefined) is the whole filter.
  *
- * extendedBolusDuration's unit is not yet confirmed against a real sync (see
- * docs/PROMOTION.md's promotion log) — returned as the raw Glooko number,
- * not converted to a labelled unit, so this stays honest about that gap
- * rather than guessing "minutes" and silently being wrong.
+ * durationString is Glooko's own raw formatted text (e.g. "2h") — passed
+ * through as-is, not parsed into minutes/seconds, since no confirmed format
+ * spec exists yet for it across devices.
  */
 export function buildSplitBolusLog(timeline) {
   return timeline
-    .filter((i) => i.type === 'BOLUS' && i.extendedDelivery > 0)
-    .map((b) => {
-      const total = (b.initialDelivery || 0) + (b.extendedDelivery || 0);
-      return {
-        time: b.time,
-        class: b.class,
-        totalDelivered: b.delivered,
-        initialDelivery: b.initialDelivery,
-        extendedDelivery: b.extendedDelivery,
-        extendedBolusDurationRaw: b.extendedBolusDuration,
-        initialPercent: total > 0 ? Math.round((b.initialDelivery / total) * 1000) / 10 : null,
-      };
-    });
+    .filter((i) => i.type === 'BOLUS' && i.extendedDeliveryPercentage > 0)
+    .map((b) => ({
+      time: b.time,
+      class: b.class,
+      totalDelivered: b.delivered,
+      initialDeliveryPercent: b.initialDeliveryPercentage,
+      extendedDeliveryPercent: b.extendedDeliveryPercentage,
+      durationString: b.durationString,
+    }));
 }
 
 /** Aggregate stats over a split-bolus log against the full bolus population
@@ -478,8 +484,7 @@ export function summariseSplitBolusStats(timeline, splitLog) {
     totalBoluses,
     splitCount,
     splitRatePercent: totalBoluses > 0 ? Math.round((splitCount / totalBoluses) * 1000) / 10 : 0,
-    avgExtendedDurationRaw: avg(splitLog.map((s) => s.extendedBolusDurationRaw).filter((v) => v != null)),
-    avgInitialPercent: avg(splitLog.map((s) => s.initialPercent).filter((v) => v != null)),
+    avgInitialDeliveryPercent: avg(splitLog.map((s) => s.initialDeliveryPercent).filter((v) => v != null)),
   };
 }
 
@@ -1559,7 +1564,7 @@ const BOLUS_KNOWN_KEYS = [
   'isOverrideAbove', 'isOverrideBelow', 'insulinDelivered', 'insulinProgrammed',
   'isInterrupted', 'totalInsulinRecommendation', 'insulinRecommendationForCarbs',
   'insulinOnBoard', 'bloodGlucoseInput', 'bloodGlucoseInputSource',
-  'initialDelivery', 'extendedDelivery', 'extendedBolusDuration',
+  'initialDeliveryPercentage', 'extendedDeliveryPercentage', 'durationString',
 ];
 
 
