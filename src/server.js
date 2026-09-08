@@ -57,6 +57,8 @@ import {
   computeSummary,
   calculateHourly,
   buildEnrichedBolusLog,
+  buildSplitBolusLog,
+  summariseSplitBolusStats,
   bucketTrend,
   downsampleForChart,
   buildChartXAxis,
@@ -514,6 +516,59 @@ server.registerTool(
         filterApplied: classes && classes.length > 0 ? classes : 'All',
         count: log.length,
         boluses: log,
+      });
+    } catch (err) {
+      return errorResult(err.message);
+    }
+  }
+);
+
+// --- get_split_bolus_log ---------------------------------------------------
+server.registerTool(
+  'get_split_bolus_log',
+  {
+    title: 'Split/extended bolus log and stats',
+    description:
+      'Every SPLIT (extended/dual-wave) bolus in the window — one with a real ' +
+      'extended-delivery portion, not a normal single-shot dose — plus aggregate ' +
+      'stats over the whole bolus population for the same window.\n\n' +
+      'Each logged bolus carries initialDelivery (the up-front units), ' +
+      'extendedDelivery (delivered over the extended portion), ' +
+      'extendedBolusDurationRaw (Glooko\'s raw duration value for that extended ' +
+      'portion — its unit is not yet confirmed against a real sync, see ' +
+      'docs/PROMOTION.md, so treat it as an uncalibrated relative figure rather ' +
+      'than assuming minutes), and initialPercent (initialDelivery as a percent ' +
+      'of total delivered, so a 60/40 split reads as initialPercent: 60).\n\n' +
+      'Use it to see whether/how often splitting is actually used, and whether ' +
+      'the split ratio or duration correlates with post-meal control (pair with ' +
+      'get_meal_window_analysis on individual events).\n\n' +
+      `Capped to ${CAPS.bolusMaxDays} days per call. Times are plain wall clock ` +
+      'time (device-local), not UTC.\n\n' +
+      'Returns: window, stats (totalBoluses, splitCount, splitRatePercent, ' +
+      'avgExtendedDurationRaw, avgInitialPercent — all null/0 for a window with ' +
+      'no split boluses, which is a normal result, not an error), and a boluses ' +
+      'array of the split events themselves.',
+    inputSchema: {
+      start: z.string().describe(startDesc),
+      end: z.string().describe(endDesc),
+    },
+  },
+  async ({ start, end }) => {
+    try {
+      const s = assertIsoDate(start, 'start');
+      const e = assertIsoDate(end, 'end');
+      assertWithinCap(s, e, CAPS.bolusMaxDays, 'get_split_bolus_log');
+      const bundle = await getProcessedRange(s, e);
+      const sEpoch = Date.parse(s) / 1000;
+      const eEpoch = Date.parse(e) / 1000;
+      const slice = bundle.timeline.filter((i) => i.epoch >= sEpoch && i.epoch <= eEpoch);
+      const splitLog = buildSplitBolusLog(slice);
+      const stats = summariseSplitBolusStats(slice, splitLog);
+
+      return jsonResult({
+        window: { start: s, end: e },
+        stats,
+        boluses: splitLog,
       });
     } catch (err) {
       return errorResult(err.message);

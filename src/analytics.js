@@ -313,6 +313,13 @@ export function processUnifiedGlookoData(rawJson) {
       interrupted,
       override,
       class: cat,
+      // Split/extended-delivery fields — promoted from `extra` under
+      // PROMOTION.md's bootstrap exception (SCHEMA_VERSION 8). Present on
+      // every bolus record per DESIGN.md's Background section, though a
+      // non-extended bolus naturally has null/zero extendedDelivery.
+      initialDelivery: numOrNull(b.initialDelivery),
+      extendedDelivery: numOrNull(b.extendedDelivery),
+      extendedBolusDuration: numOrNull(b.extendedBolusDuration),
       extra: captureExtra(b, BOLUS_KNOWN_KEYS),
       time: new Date(b.x * 1000).toISOString(),
     };
@@ -425,6 +432,55 @@ export function buildEnrichedBolusLog(timeline, settingsHistory, units = 'mmol')
         context,
       };
     });
+}
+
+/**
+ * Split/extended-delivery bolus log — the original motivating question for
+ * this fork, now that initialDelivery/extendedDelivery/extendedBolusDuration
+ * are typed columns (docs/PROMOTION.md's bootstrap promotion, SCHEMA_VERSION
+ * 8), not buried in `extra`.
+ *
+ * A bolus counts as "split" here when it has a real, positive
+ * extendedDelivery — a normal (non-split) bolus naturally has
+ * extendedDelivery null/0, which isn't an error, just "wasn't split," so
+ * `> 0` alone (true for neither null nor undefined) is the whole filter.
+ *
+ * extendedBolusDuration's unit is not yet confirmed against a real sync (see
+ * docs/PROMOTION.md's promotion log) — returned as the raw Glooko number,
+ * not converted to a labelled unit, so this stays honest about that gap
+ * rather than guessing "minutes" and silently being wrong.
+ */
+export function buildSplitBolusLog(timeline) {
+  return timeline
+    .filter((i) => i.type === 'BOLUS' && i.extendedDelivery > 0)
+    .map((b) => {
+      const total = (b.initialDelivery || 0) + (b.extendedDelivery || 0);
+      return {
+        time: b.time,
+        class: b.class,
+        totalDelivered: b.delivered,
+        initialDelivery: b.initialDelivery,
+        extendedDelivery: b.extendedDelivery,
+        extendedBolusDurationRaw: b.extendedBolusDuration,
+        initialPercent: total > 0 ? Math.round((b.initialDelivery / total) * 1000) / 10 : null,
+      };
+    });
+}
+
+/** Aggregate stats over a split-bolus log against the full bolus population
+ * it was drawn from — how often splitting happens, not just the individual
+ * events. `splitLog` must be `buildSplitBolusLog(timeline)`'s own output. */
+export function summariseSplitBolusStats(timeline, splitLog) {
+  const totalBoluses = timeline.filter((i) => i.type === 'BOLUS').length;
+  const splitCount = splitLog.length;
+  const avg = (values) => (values.length ? values.reduce((s, v) => s + v, 0) / values.length : null);
+  return {
+    totalBoluses,
+    splitCount,
+    splitRatePercent: totalBoluses > 0 ? Math.round((splitCount / totalBoluses) * 1000) / 10 : 0,
+    avgExtendedDurationRaw: avg(splitLog.map((s) => s.extendedBolusDurationRaw).filter((v) => v != null)),
+    avgInitialPercent: avg(splitLog.map((s) => s.initialPercent).filter((v) => v != null)),
+  };
 }
 
 /**
@@ -1503,6 +1559,7 @@ const BOLUS_KNOWN_KEYS = [
   'isOverrideAbove', 'isOverrideBelow', 'insulinDelivered', 'insulinProgrammed',
   'isInterrupted', 'totalInsulinRecommendation', 'insulinRecommendationForCarbs',
   'insulinOnBoard', 'bloodGlucoseInput', 'bloodGlucoseInputSource',
+  'initialDelivery', 'extendedDelivery', 'extendedBolusDuration',
 ];
 
 

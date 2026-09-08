@@ -116,7 +116,13 @@ function ensureSqlJsLoaded() {
 //       raw per-record data, `field_capability` is the derived "have we ever
 //       seen this field populated, and when" state that capability-gated
 //       modules (DESIGN.md section 4) actually read from.
-const SCHEMA_VERSION = 7;
+//   8 = first field promotion (docs/PROMOTION.md, bootstrap exception):
+//       bolus gains initial_delivery/extended_delivery/extended_bolus_duration
+//       typed columns, promoted out of `extra` — the original motivating
+//       question for this whole fork. Still swept into `extra` too until
+//       BOLUS_KNOWN_KEYS in analytics.js is updated (it is, as of this same
+//       version), so no data is lost either way.
+const SCHEMA_VERSION = 8;
 
 /**
  * Serialise the in-memory database to disk. Cheap enough to call once per
@@ -232,10 +238,16 @@ const SCHEMA_SQL = `
       interrupted  INTEGER, -- 1 = delivered cut short of programmed
       override     TEXT,    -- 'above' | 'below' | null vs recommendation
       class        TEXT,
+      initial_delivery        REAL, -- initialDelivery: the up-front portion of
+                                     -- a split/extended bolus. See SCHEMA_VERSION 8.
+      extended_delivery       REAL, -- extendedDelivery: the portion delivered
+                                     -- over extended_bolus_duration.
+      extended_bolus_duration REAL, -- extendedBolusDuration: raw Glooko value;
+                                     -- unit not yet confirmed against a real
+                                     -- sync (see docs/PROMOTION.md's log).
       extra        TEXT,    -- JSON: everything else Glooko sent for this
-                             -- bolus (e.g. initialDelivery/extendedDelivery/
-                             -- extendedBolusDuration) not yet promoted to a
-                             -- typed column. See SCHEMA_VERSION 7.
+                             -- bolus, not yet promoted to a typed column. See
+                             -- SCHEMA_VERSION 7/8.
       PRIMARY KEY (epoch, seq)
     );
     CREATE TABLE IF NOT EXISTS field_capability (
@@ -453,8 +465,9 @@ export function ingestTimeline(timeline, settingsSnapshots) {
   const bolStmt = conn.prepare(
     `INSERT INTO bolus
        (epoch, seq, units, delivered, programmed, rec_total, rec_corr, rec_carb,
-        carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class, extra)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class,
+        initial_delivery, extended_delivery, extended_bolus_duration, extra)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(epoch, seq) DO UPDATE SET
        units=excluded.units, delivered=excluded.delivered,
        programmed=excluded.programmed, rec_total=excluded.rec_total,
@@ -462,7 +475,9 @@ export function ingestTimeline(timeline, settingsSnapshots) {
        carbs=excluded.carbs, iob=excluded.iob, bg_input=excluded.bg_input,
        bg_source=excluded.bg_source, is_manual=excluded.is_manual,
        interrupted=excluded.interrupted, override=excluded.override,
-       class=excluded.class, extra=excluded.extra`
+       class=excluded.class, initial_delivery=excluded.initial_delivery,
+       extended_delivery=excluded.extended_delivery,
+       extended_bolus_duration=excluded.extended_bolus_duration, extra=excluded.extra`
   );
   // Monotonic capability state (DESIGN.md 2a): INSERT ... DO NOTHING, so a
   // field's first-seen record is permanent — a later sync that doesn't see
@@ -518,6 +533,9 @@ export function ingestTimeline(timeline, settingsSnapshots) {
           item.interrupted ? 1 : 0,
           item.override ?? null,
           item.class ?? null,
+          item.initialDelivery ?? null,
+          item.extendedDelivery ?? null,
+          item.extendedBolusDuration ?? null,
           extraJson
         );
         recordCapabilities('bolus', item.extra, item.epoch);
@@ -830,7 +848,8 @@ export function getTimeline(startEpoch, endEpoch) {
   const bolus = conn
     .prepare(
       `SELECT epoch, units, delivered, programmed, rec_total, rec_corr, rec_carb,
-              carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class, extra
+              carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class,
+              initial_delivery, extended_delivery, extended_bolus_duration, extra
          FROM bolus WHERE epoch BETWEEN ? AND ? ORDER BY epoch, seq`
     )
     .all(startEpoch, endEpoch)
@@ -851,6 +870,9 @@ export function getTimeline(startEpoch, endEpoch) {
       interrupted: !!r.interrupted,
       override: r.override,
       class: r.class,
+      initialDelivery: r.initial_delivery,
+      extendedDelivery: r.extended_delivery,
+      extendedBolusDuration: r.extended_bolus_duration,
       extra: r.extra ? JSON.parse(r.extra) : null,
       time: new Date(r.epoch * 1000).toISOString(),
     }));

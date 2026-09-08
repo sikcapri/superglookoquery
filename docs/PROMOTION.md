@@ -71,10 +71,15 @@ Promoting a field is a normal schema-migration change, done by hand:
    / bolus `.map()` blocks in `analytics.js`) to read the field from the raw
    Glooko payload into the new typed column, the same way every existing
    typed field already works.
-4. Write a one-off backfill for existing archives: read the value back out
-   of each row's `extra` JSON and write it into the new column, then leave it
-   in `extra` too — promotion is additive, it should never delete
-   historical data or require a re-sync from Glooko.
+4. No manual backfill needed: bumping `SCHEMA_VERSION` already triggers this
+   project's existing self-heal mechanism (`store.js`'s `openArchive()`) —
+   an older archive's data tables are dropped and re-derived fresh from
+   Glooko on the next query. Glooko is the source of truth here, not the
+   local archive, so a wipe-and-re-pull is the established migration path
+   for every schema change so far (see the `SCHEMA_VERSION` changelog
+   comment in `store.js`), not something a field promotion needs to work
+   around. The field still gets swept into `extra` on that re-pull for any
+   archive briefly running old code, so nothing is lost either way.
 5. Add or extend the MCP tool that actually uses the field, if one doesn't
    exist yet — promotion without a consuming tool is just schema churn.
 6. Record the change in the promotion log below.
@@ -97,4 +102,4 @@ contributor checks before assuming a field is still `extra`-only.
 
 | Date | Field(s) | Component | Trigger | Notes |
 |------|----------|-----------|---------|-------|
-| _none yet_ | | | | |
+| 2026-09-09 | `initialDelivery`, `extendedDelivery`, `extendedBolusDuration` | pump (bolus) | Bootstrap exception | The original motivating question for this fork. `extendedBolusDuration`'s unit is not yet confirmed against a real sync — see `store.js`'s column comment. A fourth field DESIGN.md's Background section vaguely calls "percentages" was deliberately NOT promoted here: no confirmed real field name for it exists yet, and guessing one into the schema would be worse than leaving it in `extra` a while longer. |

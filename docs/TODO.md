@@ -103,16 +103,43 @@ sense to tackle, though phases can overlap.
 (The point of doing Phase 1 at all — pick a first real payoff before
 generalizing further.)
 
-- [ ] Capture bolus split/extended-delivery fields (`initialDelivery`,
-      `extendedDelivery`, `extendedBolusDuration`, percentages) — the
-      original motivating question
-- [ ] A tool exposing split-bolus history/analysis once captured
+- [x] Capture bolus split/extended-delivery fields — promoted
+      `initialDelivery`/`extendedDelivery`/`extendedBolusDuration` from
+      `extra` to typed columns (SCHEMA_VERSION 8, `docs/PROMOTION.md`'s
+      bootstrap exception). The 4th field DESIGN.md's Background section
+      calls "percentages" was deliberately NOT promoted — no confirmed real
+      field name exists for it (the original raw-payload probe was
+      inspected and its dump deleted per this project's own data-handling
+      discipline; nothing recorded its exact key). Verified with a
+      realistic synthetic `processUnifiedGlookoData()` input: the 3 fields
+      land as typed properties and are correctly excluded from `extra`.
+- [x] A tool exposing split-bolus history/analysis: `get_split_bolus_log`
+      in `server.js` (`buildSplitBolusLog()` / `summariseSplitBolusStats()`
+      in `analytics.js`) — logs each split/extended bolus with its
+      initial/extended units and split percentage, plus aggregate stats
+      (split rate, average duration, average split percent) over the whole
+      bolus population in the window. `extendedBolusDuration`'s unit is
+      explicitly flagged unconfirmed in the tool's own description rather
+      than assumed.
 - [ ] Capture CamAPS pump-mode breakdown (automatic/manual/boost/attempting
       percentages) as the first genuinely device-specific, capability-gated
-      module — proves the gating mechanism actually works end to end
+      module — **blocked**: same problem as "percentages" above, but for
+      the whole module. No confirmed real field name exists for these
+      fields — DESIGN.md only ever describes them, never records the exact
+      key(s) a real CamAPS payload uses. `camapsPumpModeAutomaticPercentage`
+      appearing as the illustrative example in `server.js`'s `GATED_MODULES`
+      comment is exactly that: illustrative, invented for the gating-
+      mechanism smoke test, not a verified field name. Building this module
+      for real needs a fresh look at a real CamAPS payload first (a live,
+      carefully-scoped Glooko sync under the current code, the same kind of
+      one-off probe the original Phase B investigation did) — not
+      something to guess into the schema.
 - [ ] Submit the first real schema-registry entry (this account's own
-      CamAPS FX + Ypso pump + Libre 3+ combo) — the project's own bootstrap
-      contribution, dogfooding the submission mechanism itself
+      CamAPS FX + Ypso pump + Libre 3+ combo) — **blocked on the same real-
+      sync gap**: the archive has no data ingested under the current
+      (SCHEMA_VERSION 8) code yet, so there is no real `field_capability`/
+      `extra` evidence yet to build a genuine report from. This is the
+      project's own bootstrap contribution once unblocked.
 
 ## Phase 3 — Testing
 
