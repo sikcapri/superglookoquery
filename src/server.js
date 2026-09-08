@@ -52,6 +52,7 @@ import {
   CAPS,
 } from './range.js';
 import { resolveChartsDir } from './paths.js';
+import { ensureDbReady, getFieldCapabilities } from './store.js';
 import {
   computeSummary,
   calculateHourly,
@@ -76,7 +77,7 @@ import { PERSONA_PROMPT } from './prompt.js';
 // more than one transport. createServer() builds a fully-registered server.
 export function createServer() {
 const server = new McpServer({
-  name: 'podquery',
+  name: 'superglookoquery',
   version: '1.0.0',
 });
 
@@ -1393,15 +1394,76 @@ server.registerPrompt(
   return server;
 }
 
+// --- Capability-gated modules (DESIGN.md section 4) -----------------------
+//
+// A gated module's tools must genuinely not appear for an account that has
+// never populated the fields they depend on (not an error, not a tool that
+// returns nulls — absent). That check needs `field_capability` out of the
+// archive, which means real DB I/O — and createServer() above is
+// deliberately synchronous and DB-free, because it runs before the MCP
+// transport connects, and any I/O there would delay the `initialize`
+// handshake every client probes with first (see range.js / store.js's
+// ensureDbReady() comments for the full rationale; this file's own core
+// tools rely on that same laziness).
+//
+// So gated modules register in a separate, later step: main() awaits
+// server.connect() first (the handshake can proceed immediately, same as
+// today), then calls registerCapabilityGatedModules() afterward. The SDK's
+// registerTool() works fine post-connect — a tool added at this point sends
+// the client a tools/list_changed notification, which is the correct
+// "a module just switched on" signal rather than something the client has to
+// poll for.
+//
+// No gated module exists yet — Phase 2 (docs/TODO.md) adds the first one
+// (a CamAPS pump-mode breakdown tool gated on the camapsPumpMode* fields).
+// This array is where that entry goes; the mechanism below is what makes
+// adding it a matter of describing requirements, not writing new plumbing.
+const GATED_MODULES = [
+  // {
+  //   name: 'camaps_pump_mode',
+  //   requires: [{ category: 'bolus', fieldName: 'camapsPumpModeAutomaticPercentage' }],
+  //   register: (server) => { server.registerTool('get_pump_mode_breakdown', { ... }, async () => { ... }); },
+  // },
+];
+
+/**
+ * Registers every module in GATED_MODULES whose required fields are ALL
+ * confirmed present for this account (per store.js's monotonic
+ * field_capability state), and silently skips the rest. Must run after
+ * server.connect() — see the comment above GATED_MODULES for why.
+ */
+export async function registerCapabilityGatedModules(server) {
+  if (!GATED_MODULES.length) return;
+
+  await ensureDbReady();
+  const confirmed = new Set(
+    getFieldCapabilities().map((c) => `${c.category}:${c.fieldName}`)
+  );
+
+  for (const mod of GATED_MODULES) {
+    const satisfied = mod.requires.every((r) => confirmed.has(`${r.category}:${r.fieldName}`));
+    if (satisfied) mod.register(server);
+  }
+}
+
 async function main() {
   const transport = new StdioServerTransport();
   const server = createServer();
   await server.connect(transport);
   // stderr is safe for logging; stdout is the MCP channel.
-  console.error('[podquery] MCP server running on stdio.');
+  console.error('[superglookoquery] MCP server running on stdio.');
+
+  // Runs after connect so a slow/first-run DB open never delays `initialize`
+  // (see the comment above GATED_MODULES). A failure here shouldn't take
+  // down a server whose core tools are already live and working.
+  try {
+    await registerCapabilityGatedModules(server);
+  } catch (err) {
+    console.error('[superglookoquery] Capability-gated module registration failed (core tools unaffected):', err.message);
+  }
 }
 
 main().catch((err) => {
-  console.error('[podquery] Fatal:', err);
+  console.error('[superglookoquery] Fatal:', err);
   process.exit(1);
 });

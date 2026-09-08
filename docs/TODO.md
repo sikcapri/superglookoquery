@@ -61,8 +61,15 @@ sense to tackle, though phases can overlap.
 - [ ] Seamless in-session PR submission (`gh pr create`). **Not started** —
       the flow currently stops at "written and hash-verified locally under
       `schema-registry/`," deliberately not implying it goes any further.
-- [ ] Capability-gated module registration in `server.js` (a module's tools
-      only register if its required fields are confirmed present)
+- [x] Capability-gated module registration in `server.js`: `GATED_MODULES` +
+      `registerCapabilityGatedModules()`, checked against `store.js`'s
+      `field_capability` state. Runs *after* `server.connect()`, not inside
+      `createServer()` — gating registration on a DB read would otherwise
+      delay the `initialize` handshake, which `range.js`/`store.js` are
+      explicit that nothing should do. Verified with two synthetic modules
+      (one whose required field was seeded present, one whose required field
+      was never seen): only the satisfied one registered. No real gated
+      module exists yet — Phase 2's CamAPS pump-mode tool will be the first.
 - [x] `schema-registry/` folder structure: `pumps/`, `cgms/` (with
       `.gitkeep`), `lifestyle-features.json` not yet created (no lifestyle
       data path exists yet — see Phase 1's other pending items), plus a
