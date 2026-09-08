@@ -45,9 +45,12 @@ can be submitted at all.
 ## Contributing
 
 Run `node src/submit-registry-entry.js`. It walks you through generating a
-report, reviewing it in full, a required typed confirmation, and (once
-built) opening a PR. See `CONTRIBUTING.md` (not yet written — Phase 4) for
-the full walkthrough.
+report, reviewing it in full, a required typed confirmation, and then opens
+a PR for you (via `gh pr create`) if you have the GitHub CLI installed and
+authenticated. If not, your entries are still written and hash-verified
+locally under `schema-registry/` — push the branch and open the PR
+yourself, or email the maintainer / paste the report into a GitHub issue.
+See `CONTRIBUTING.md` (not yet written — Phase 4) for the full walkthrough.
 
 ## If two contributors' entries for the same component disagree
 

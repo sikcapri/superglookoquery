@@ -58,9 +58,22 @@ sense to tackle, though phases can overlap.
       of deleting it (caught and fixed a real bug here — the first version
       unconditionally deleted on mismatch, which would have destroyed an
       already-merged registry entry in a real failure).
-- [ ] Seamless in-session PR submission (`gh pr create`). **Not started** —
-      the flow currently stops at "written and hash-verified locally under
-      `schema-registry/`," deliberately not implying it goes any further.
+- [x] Seamless in-session PR submission (`gh pr create`):
+      `openRegistryPullRequest()` in `submit-registry-entry.js`, wired into
+      `main()` after every written entry has already passed the typed
+      confirmation, independent scan, and write/re-read hash check. Creates
+      one branch, stages exactly the written files (never `git add -A`),
+      commits, pushes, and opens the PR. Falls back to a clear "written and
+      verified locally, finish this yourself" message (per DESIGN.md's "no
+      GitHub account fallback" note) if `gh` isn't installed/authenticated,
+      if there's nothing to submit, or if push/PR creation fails for any
+      reason — never silent, never destructive. Verified end-to-end with
+      real `git`/`gh` against an isolated scratch repo (a local bare
+      remote, not a real GitHub repo): confirmed the exact intended file
+      gets committed, confirmed the "no changes to submit" short-circuit,
+      and confirmed a push-succeeds-but-PR-creation-fails case reports
+      cleanly with the commit left intact. Never touched the real
+      superglookoquery repo or opened a real PR during testing.
 - [x] Capability-gated module registration in `server.js`: `GATED_MODULES` +
       `registerCapabilityGatedModules()`, checked against `store.js`'s
       `field_capability` state. Runs *after* `server.connect()`, not inside
