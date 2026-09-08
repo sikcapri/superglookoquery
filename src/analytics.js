@@ -256,6 +256,7 @@ export function processUnifiedGlookoData(rawJson) {
         type: 'CGM',
         val: valMmol,
         vel,
+        extra: captureExtra(p, CGM_KNOWN_KEYS),
         time: new Date(p.x * 1000).toISOString(),
       });
     }
@@ -312,6 +313,7 @@ export function processUnifiedGlookoData(rawJson) {
       interrupted,
       override,
       class: cat,
+      extra: captureExtra(b, BOLUS_KNOWN_KEYS),
       time: new Date(b.x * 1000).toISOString(),
     };
   });
@@ -1462,6 +1464,46 @@ function numOrNull(v) {
   if (v === undefined || v === null || Number.isNaN(Number(v))) return null;
   return +Number(v).toFixed(2);
 }
+
+/**
+ * SuperGlookoQuery fork — DESIGN.md section 1 (typed core + `extra`
+ * overflow). Returns everything in `raw` that ISN'T one of `knownKeys`, as a
+ * plain object, or null if there's nothing left over. This is the ingest-
+ * side half of the overflow mechanism: whatever this account's Glooko API
+ * response actually contains beyond the fields this fork already knows how
+ * to type gets captured here rather than silently discarded, so a device
+ * this project has never been tested against still has its data preserved
+ * (see store.js's `extra` column and `field_capability` table for where
+ * this ends up and how it drives capability-gated modules).
+ *
+ * Deliberately NOT recursive/deep — Glooko fields observed so far are a flat
+ * bag per record (see DESIGN.md's "Known follow-ups" re: nested sub-objects
+ * needing separate handling if/when one shows up; this is the simple case).
+ */
+function captureExtra(raw, knownKeys) {
+  if (!raw || typeof raw !== 'object') return null;
+  const known = new Set(knownKeys);
+  const extra = {};
+  let hasAny = false;
+  for (const [key, value] of Object.entries(raw)) {
+    if (known.has(key)) continue;
+    extra[key] = value;
+    hasAny = true;
+  }
+  return hasAny ? extra : null;
+}
+
+// The typed columns each record type already reads from the raw Glooko
+// response — kept as a named constant (not inline) so it's the one place
+// to update if a field here ever gets promoted to a real typed column,
+// per DESIGN.md's promotion path.
+const CGM_KNOWN_KEYS = ['x', 'y'];
+const BOLUS_KNOWN_KEYS = [
+  'x', 'y', 'isManual', 'carbsInput', 'insulinRecommendationForCorrection',
+  'isOverrideAbove', 'isOverrideBelow', 'insulinDelivered', 'insulinProgrammed',
+  'isInterrupted', 'totalInsulinRecommendation', 'insulinRecommendationForCarbs',
+  'insulinOnBoard', 'bloodGlucoseInput', 'bloodGlucoseInputSource',
+];
 
 
 // --- basal delivery state ------------------------------------------------

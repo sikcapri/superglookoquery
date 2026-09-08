@@ -103,7 +103,20 @@ function ensureSqlJsLoaded() {
 //       (which may already have quietly lost one of a colliding pair) gets a
 //       fresh chance to capture both from Glooko, though whether Glooko's own
 //       backend still has both to give us at that point is unverified.
-const SCHEMA_VERSION = 6;
+//   7 = SuperGlookoQuery fork: typed-core + `extra` overflow. cgm/bolus each
+//       gain an `extra` TEXT column (JSON-serialised, everything Glooko sent
+//       for that record that isn't already a named typed column — see
+//       DESIGN.md section 1). New `field_capability` table backs the
+//       runtime capability state from DESIGN.md section 2a: one row per
+//       (category, field_name) EVER confirmed populated for this account,
+//       monotonic (rows are only ever inserted, never updated/removed) so a
+//       capability once confirmed can never be silently revoked by a later
+//       sync that happens not to see that field again. This is deliberately
+//       a separate table from cgm/bolus's own `extra` column: `extra` is the
+//       raw per-record data, `field_capability` is the derived "have we ever
+//       seen this field populated, and when" state that capability-gated
+//       modules (DESIGN.md section 4) actually read from.
+const SCHEMA_VERSION = 7;
 
 /**
  * Serialise the in-memory database to disk. Cheap enough to call once per
@@ -197,6 +210,9 @@ const SCHEMA_SQL = `
                                          -- SCHEMA_VERSION 6 note above
       val   REAL NOT NULL,
       vel   REAL,
+      extra TEXT,            -- JSON: everything else Glooko sent for this
+                              -- reading (e.g. mealTag) that isn't one of the
+                              -- typed columns above. See SCHEMA_VERSION 7.
       PRIMARY KEY (epoch, seq)
     );
     CREATE TABLE IF NOT EXISTS bolus (
@@ -216,7 +232,20 @@ const SCHEMA_SQL = `
       interrupted  INTEGER, -- 1 = delivered cut short of programmed
       override     TEXT,    -- 'above' | 'below' | null vs recommendation
       class        TEXT,
+      extra        TEXT,    -- JSON: everything else Glooko sent for this
+                             -- bolus (e.g. initialDelivery/extendedDelivery/
+                             -- extendedBolusDuration) not yet promoted to a
+                             -- typed column. See SCHEMA_VERSION 7.
       PRIMARY KEY (epoch, seq)
+    );
+    CREATE TABLE IF NOT EXISTS field_capability (
+      category         TEXT NOT NULL,  -- Glooko category, e.g. 'bolus',
+                                        -- 'cgm', 'insulin_pump', 'lifestyle'
+      field_name       TEXT NOT NULL,
+      first_seen_epoch INTEGER NOT NULL, -- when first confirmed populated
+      prompted         INTEGER NOT NULL DEFAULT 0, -- has the one-time
+                                        -- "new field detected" notice fired?
+      PRIMARY KEY (category, field_name)
     );
     CREATE TABLE IF NOT EXISTS settings (
       effective_epoch INTEGER PRIMARY KEY,
@@ -289,7 +318,7 @@ function openArchive(bytes) {
       'DROP TABLE IF EXISTS cgm; DROP TABLE IF EXISTS bolus; DROP TABLE IF EXISTS settings; ' +
         'DROP TABLE IF EXISTS daily_insulin; DROP TABLE IF EXISTS basal_state; ' +
         'DROP TABLE IF EXISTS device_event; DROP TABLE IF EXISTS day_status; ' +
-        'DROP TABLE IF EXISTS sync_state;'
+        'DROP TABLE IF EXISTS sync_state; DROP TABLE IF EXISTS field_capability;'
     );
   }
   db.exec(SCHEMA_SQL);
@@ -399,17 +428,33 @@ function d() {
  * later assigns the same seq to the same logical point and converges rather
  * than accumulating duplicates.
  */
+/**
+ * True if `value` counts as "populated" — not null/undefined, not an empty
+ * string, not NaN. Zero and false DO count (a real 0% or false is data, not
+ * absence of data). Shared single source of truth between ingestTimeline's
+ * monotonic capability recording (2a) and discover.js's own threshold-based
+ * populated-rate calculation (2b) — the two use this same base rule, they
+ * just apply different thresholds on top of it (2a: populated even once,
+ * ever; 2b: populated above a real rate — see DESIGN.md section 2).
+ */
+export function isPopulatedValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'number' && Number.isNaN(value)) return false;
+  if (typeof value === 'string' && value.trim() === '') return false;
+  return true;
+}
+
 export function ingestTimeline(timeline, settingsSnapshots) {
   const conn = d();
   const cgmStmt = conn.prepare(
-    `INSERT INTO cgm (epoch, seq, val, vel) VALUES (?, ?, ?, ?)
-     ON CONFLICT(epoch, seq) DO UPDATE SET val=excluded.val, vel=excluded.vel`
+    `INSERT INTO cgm (epoch, seq, val, vel, extra) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(epoch, seq) DO UPDATE SET val=excluded.val, vel=excluded.vel, extra=excluded.extra`
   );
   const bolStmt = conn.prepare(
     `INSERT INTO bolus
        (epoch, seq, units, delivered, programmed, rec_total, rec_corr, rec_carb,
-        carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class, extra)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(epoch, seq) DO UPDATE SET
        units=excluded.units, delivered=excluded.delivered,
        programmed=excluded.programmed, rec_total=excluded.rec_total,
@@ -417,8 +462,30 @@ export function ingestTimeline(timeline, settingsSnapshots) {
        carbs=excluded.carbs, iob=excluded.iob, bg_input=excluded.bg_input,
        bg_source=excluded.bg_source, is_manual=excluded.is_manual,
        interrupted=excluded.interrupted, override=excluded.override,
-       class=excluded.class`
+       class=excluded.class, extra=excluded.extra`
   );
+  // Monotonic capability state (DESIGN.md 2a): INSERT ... DO NOTHING, so a
+  // field's first-seen record is permanent — a later sync that doesn't see
+  // that field populated again can never revoke a capability already
+  // confirmed. See getNewlyConfirmedCapabilities() for how a caller finds
+  // out which of these are brand new (for the one-time contribute prompt).
+  const capStmt = conn.prepare(
+    `INSERT INTO field_capability (category, field_name, first_seen_epoch, prompted)
+     VALUES (?, ?, ?, 0)
+     ON CONFLICT(category, field_name) DO NOTHING`
+  );
+
+  /** Record capability state for every populated key in an `extra` object.
+   * `extra` itself is left as-is (including nulls) for storage — this only
+   * decides what counts as a confirmed capability, it doesn't filter what's
+   * stored in the row's own `extra` JSON. */
+  function recordCapabilities(category, extra, epoch) {
+    if (!extra) return;
+    for (const [key, value] of Object.entries(extra)) {
+      if (isPopulatedValue(value)) capStmt.run(category, key, epoch);
+    }
+  }
+
   conn.exec('BEGIN');
   try {
     const cgmSeqByEpoch = new Map();
@@ -427,10 +494,13 @@ export function ingestTimeline(timeline, settingsSnapshots) {
       if (item.type === 'CGM') {
         const seq = cgmSeqByEpoch.get(item.epoch) || 0;
         cgmSeqByEpoch.set(item.epoch, seq + 1);
-        cgmStmt.run(item.epoch, seq, item.val, item.vel ?? null);
+        const extraJson = item.extra ? JSON.stringify(item.extra) : null;
+        cgmStmt.run(item.epoch, seq, item.val, item.vel ?? null, extraJson);
+        recordCapabilities('cgm', item.extra, item.epoch);
       } else if (item.type === 'BOLUS') {
         const seq = bolusSeqByEpoch.get(item.epoch) || 0;
         bolusSeqByEpoch.set(item.epoch, seq + 1);
+        const extraJson = item.extra ? JSON.stringify(item.extra) : null;
         bolStmt.run(
           item.epoch,
           seq,
@@ -447,8 +517,10 @@ export function ingestTimeline(timeline, settingsSnapshots) {
           item.isManual ? 1 : 0,
           item.interrupted ? 1 : 0,
           item.override ?? null,
-          item.class ?? null
+          item.class ?? null,
+          extraJson
         );
+        recordCapabilities('bolus', item.extra, item.epoch);
       }
     }
     if (settingsSnapshots && settingsSnapshots.length) {
@@ -745,19 +817,20 @@ export function getNewestDataEpoch() {
 export function getTimeline(startEpoch, endEpoch) {
   const conn = d();
   const cgm = conn
-    .prepare('SELECT epoch, val, vel FROM cgm WHERE epoch BETWEEN ? AND ? ORDER BY epoch, seq')
+    .prepare('SELECT epoch, val, vel, extra FROM cgm WHERE epoch BETWEEN ? AND ? ORDER BY epoch, seq')
     .all(startEpoch, endEpoch)
     .map((r) => ({
       epoch: r.epoch,
       type: 'CGM',
       val: r.val,
       vel: r.vel,
+      extra: r.extra ? JSON.parse(r.extra) : null,
       time: new Date(r.epoch * 1000).toISOString(),
     }));
   const bolus = conn
     .prepare(
       `SELECT epoch, units, delivered, programmed, rec_total, rec_corr, rec_carb,
-              carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class
+              carbs, iob, bg_input, bg_source, is_manual, interrupted, override, class, extra
          FROM bolus WHERE epoch BETWEEN ? AND ? ORDER BY epoch, seq`
     )
     .all(startEpoch, endEpoch)
@@ -778,9 +851,70 @@ export function getTimeline(startEpoch, endEpoch) {
       interrupted: !!r.interrupted,
       override: r.override,
       class: r.class,
+      extra: r.extra ? JSON.parse(r.extra) : null,
       time: new Date(r.epoch * 1000).toISOString(),
     }));
   return [...cgm, ...bolus].sort((a, b) => a.epoch - b.epoch);
+}
+
+/**
+ * All field capabilities ever confirmed populated for this account —
+ * DESIGN.md section 2a/4's runtime capability state. A capability-gated
+ * module checks this (not a fresh sample) to decide whether its tools
+ * should register: present here means "confirmed at least once, ever,
+ * never revoked," which is exactly the monotonic guarantee ingestTimeline's
+ * recordCapabilities() maintains.
+ * Returns [{ category, fieldName, firstSeenEpoch, prompted }].
+ */
+export function getFieldCapabilities() {
+  return d()
+    .prepare('SELECT category, field_name, first_seen_epoch, prompted FROM field_capability ORDER BY first_seen_epoch')
+    .all()
+    .map((r) => ({
+      category: r.category,
+      fieldName: r.field_name,
+      firstSeenEpoch: r.first_seen_epoch,
+      prompted: !!r.prompted,
+    }));
+}
+
+/** Whether a specific (category, fieldName) has ever been confirmed populated. */
+export function isCapabilityConfirmed(category, fieldName) {
+  const row = d()
+    .prepare('SELECT 1 FROM field_capability WHERE category = ? AND field_name = ?')
+    .get(category, fieldName);
+  return !!row;
+}
+
+/**
+ * Capabilities confirmed for the first time that haven't been surfaced to
+ * the user yet (DESIGN.md 2a's "prompt to contribute" — fires once per
+ * field, not on every subsequent sync). Calling this marks them prompted in
+ * the same call, so a caller should treat the returned list as "show this
+ * notice now" — there is no separate "peek without consuming" read.
+ */
+export function takeNewlyConfirmedCapabilities() {
+  const conn = d();
+  const rows = conn
+    .prepare('SELECT category, field_name, first_seen_epoch FROM field_capability WHERE prompted = 0')
+    .all();
+  if (!rows.length) return [];
+  conn.exec('BEGIN');
+  try {
+    const markStmt = conn.prepare(
+      'UPDATE field_capability SET prompted = 1 WHERE category = ? AND field_name = ?'
+    );
+    for (const r of rows) markStmt.run(r.category, r.field_name);
+    conn.exec('COMMIT');
+  } catch (err) {
+    conn.exec('ROLLBACK');
+    throw err;
+  }
+  return rows.map((r) => ({
+    category: r.category,
+    fieldName: r.field_name,
+    firstSeenEpoch: r.first_seen_epoch,
+  }));
 }
 
 /**
@@ -863,5 +997,5 @@ export function closeDb() {
 // Test helper: wipe everything.
 export function _wipe() {
   const conn = d();
-  conn.exec('DELETE FROM cgm; DELETE FROM bolus; DELETE FROM settings; DELETE FROM day_status; DELETE FROM daily_insulin; DELETE FROM basal_state; DELETE FROM device_event; DELETE FROM sync_state;');
+  conn.exec('DELETE FROM cgm; DELETE FROM bolus; DELETE FROM settings; DELETE FROM day_status; DELETE FROM daily_insulin; DELETE FROM basal_state; DELETE FROM device_event; DELETE FROM sync_state; DELETE FROM field_capability;');
 }
