@@ -268,8 +268,34 @@ generalizing further.)
       report). Also added `.gitignore` coverage for `store.js`'s
       `persist()` temp files, after several got orphaned on disk by
       crashed runs while chasing the reliability issue above.
-- [ ] Rewrite `README.md` for the new project identity (still describes the
-      original PodQuery/Omnipod-specific framing right now)
+- [x] Rewrite `README.md` for the new project identity: SuperGlookoQuery
+      branding and repo links throughout, a new "How discovery and device
+      support work" section explaining the actual architecture (typed
+      core + `extra`, capability gating, the schema registry) in plain
+      language with links to `docs/DESIGN.md`/`docs/PROMOTION.md`/
+      `schema-registry/README.md` for depth, honest "who this is for"
+      wording (tested against one real account, architecture designed to
+      extend — not a claim of broad device support), updated tool
+      reference (added `get_split_bolus_log`, added
+      `get_camaps_pump_mode_breakdown` under a new "capability-gated
+      tools" table with its live-fetch caveat spelled out), an updated
+      "how the code is organised" section covering every file added this
+      project (`discover.js`, `submit-registry-entry.js`,
+      `schema-registry/`, `scripts/`, `test/`), a new "Running the Tests"
+      section, and corrected sample-data wording (synthetic, not the
+      maintainer's real data). Dropped the old PodQuery-branded header
+      banner image rather than leave stale branding — a real new banner
+      is a nice-to-have, not done here. Also fixed two tool descriptions
+      in `server.js` that still said "Omnipod 5" for behaviour confirmed
+      device-agnostic in practice (`get_settings_history`,
+      `get_basal_delivery` — the latter's genuinely Omnipod-specific
+      "limited" state is called out honestly rather than generalised
+      away). Personal contact info (the original author's LinkedIn) was
+      dropped rather than guessed at for the new maintainer — GitHub
+      Issues is the one support channel stated, matching `manifest.json`.
+- [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
+      through the actual guardrail sequence), how to add a capability
+      module, coding conventions
 - [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
       through the actual guardrail sequence), how to add a capability
       module, coding conventions

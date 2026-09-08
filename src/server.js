@@ -632,7 +632,7 @@ server.registerTool(
   {
     title: 'Pump settings history',
     description:
-      'Every Omnipod 5 setting change that was in effect during the window, in ' +
+      'Every pump setting change that was in effect during the window, in ' +
       'chronological order: DIA, max basal rate, and the time-segmented target, ' +
       'ISF and carb-ratio profiles.\n\n' +
       'Use it to establish which settings were active at a given time (essential ' +
@@ -1192,9 +1192,11 @@ server.registerTool(
   {
     title: 'Basal delivery state timeline',
     description:
-      'What the Omnipod 5 was doing with basal over time: delivering normally, ' +
-      'pausing it (suspend), running at its ceiling (max), or running blind on a ' +
-      'fixed preset because it lost CGM signal (limited).\n\n' +
+      'What the pump\'s automated-delivery algorithm was doing with basal over ' +
+      'time: delivering normally, pausing it (suspend), running at its ceiling ' +
+      '(max), or running blind on a fixed preset because it lost CGM signal ' +
+      '(limited — Omnipod 5 specific; expect this state to simply never occur ' +
+      'on other pumps rather than being reported incorrectly).\n\n' +
       'IMPORTANT: these are STATES describing the algorithm\'s behaviour, NOT ' +
       'insulin amounts. "suspend" means paused, "max" means at the ceiling; ' +
       'neither is a number of units. (For basal units, use get_daily_insulin.)\n\n' +
