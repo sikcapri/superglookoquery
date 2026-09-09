@@ -20,18 +20,22 @@ supplies if `deviceName` isn't present in a given category's records.
 
 ## Entry format
 
-Each file is the output of `src/submit-registry-entry.js`, unedited:
+Each file is the output of `submit_registry_contribution`/`runChatDrivenSubmission()`
+(or the CLI script's `main()`), unedited. Full field-by-field spec:
+[`entry.schema.json`](entry.schema.json) (JSON Schema draft-07) — validated
+against both real entries currently in this registry. A real example (this
+project's own first contribution):
 
 ```json
 {
   "component": "pump",
   "deviceName": "CamDiab CamAPS FX",
   "slug": "camdiab-camaps-fx",
-  "discoveredAt": "2026-09-09T12:00:00.000Z",
+  "discoveredAt": "2026-09-09T04:27:33.639Z",
   "windowDaysActual": 30,
   "lowConfidence": false,
   "fields": [
-    { "fieldName": "initialDelivery", "type": "number", "populatedRate": 0.5, "syntheticExample": 12.34 }
+    { "fieldName": "highestBolusValue", "type": "number", "populatedCount": 108, "populatedRate": 1, "syntheticExample": 12.34 }
   ]
 }
 ```
@@ -44,13 +48,18 @@ can be submitted at all.
 
 ## Contributing
 
-Run `node src/submit-registry-entry.js`. It walks you through generating a
-report, reviewing it in full, a required typed confirmation, and then opens
-a PR for you (via `gh pr create`) if you have the GitHub CLI installed and
-authenticated. If not, your entries are still written and hash-verified
-locally under `schema-registry/` — push the branch and open the PR
-yourself, or email the maintainer / paste the report into a GitHub issue.
-See `CONTRIBUTING.md` (not yet written — Phase 4) for the full walkthrough.
+See [`CONTRIBUTING.md`](../CONTRIBUTING.md)'s "Contributing a schema
+registry entry" section for the full walkthrough (why this matters, not
+just the mechanics) — in short: ask Claude to review your device data for
+the schema registry in a live chat (this calls
+`get_registry_contribution_report` then, once you've reviewed it and typed
+its exact confirmation phrase yourself, `submit_registry_contribution`),
+which writes here and opens a PR via `gh pr create` if available. No
+terminal/no `gh`? Entries are still written and hash-verified locally —
+push the branch and open the PR yourself, or see `docs/DESIGN.md`'s "No
+GitHub account fallback" note (email the maintainer, or paste the report
+into a GitHub issue). `node src/submit-registry-entry.js` runs the same
+sequence interactively for local development.
 
 ## If two contributors' entries for the same component disagree
 

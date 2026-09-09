@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sikcapri/superglookoquery/schema-registry/entry.schema.json",
+  "title": "SuperGlookoQuery schema registry entry",
+  "description": "One device component's discovered fields, produced verbatim by src/submit-registry-entry.js's runChatDrivenSubmission()/main() — never hand-edited. See schema-registry/README.md and docs/DESIGN.md sections 2b/3 for the full design, and docs/PROMOTION.md for what happens to a field from here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["component", "deviceName", "slug", "discoveredAt", "windowDaysActual", "lowConfidence", "fields"],
+  "properties": {
+    "component": {
+      "type": "string",
+      "enum": ["pump", "cgm"],
+      "description": "Which physical device this entry describes. Determines the folder it lives in (pumps/ or cgms/) — see componentFolder() in src/submit-registry-entry.js, the single source of truth for this mapping."
+    },
+    "deviceName": {
+      "type": ["string", "null"],
+      "maxLength": 100,
+      "description": "The device's model name, taken verbatim from Glooko's own data (e.g. deviceName in bolus/CGM extra fields, or data3.devices' cgmModel/pumpModel — see extractDeviceNames() in analytics.js). Deliberately NOT synthesized like the field examples below: a device model name is identical for every user of that device and carries no patient-identifying information, and it's the whole point of a registry entry (which device is this for). Can be null if Glooko never reported one for this account (see the unknown-<component> slug fallback) — a real, known gap, not a bug to hide. NOTE: Glooko's own device-name fields are not always precise (confirmed 2026-09-09: an account's real Libre 3+ was reported by Glooko itself as \"FreeStyle Libre 3\", no distinction from the 3+ generation) — this field reports Glooko's value verbatim, not a corrected/verified precise model."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Filename stem (this file lives at <component-folder>/<slug>.json). Derived from deviceName by slugify() in discover.js (lowercased, non-alphanumeric runs collapsed to a single hyphen, leading/trailing hyphens stripped), or unknown-<component> when deviceName is null."
+    },
+    "discoveredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this specific report was generated (ISO 8601, UTC). Purely informational — NOT part of the content-integrity hash a contributor confirms (see hashReportContent() in submit-registry-entry.js, which deliberately excludes this field precisely because it's always fresh and would otherwise make every regeneration look like new content)."
+    },
+    "windowDaysActual": {
+      "type": "number",
+      "minimum": 0,
+      "description": "How many days of archive the report was actually built from. Normally 30 (discover.js's MIN_WINDOW_DAYS); can be less for a newer archive — see lowConfidence."
+    },
+    "lowConfidence": {
+      "type": "boolean",
+      "description": "True when windowDaysActual is less than the requested window (a newer archive that hasn't accumulated 30 days yet) — a real caveat on how much to trust the populatedRate figures below, not a defect in the entry itself."
+    },
+    "fields": {
+      "type": "array",
+      "description": "Every field that cleared discover.js's reporting threshold (at least 5 populated occurrences, OR at least 1% of records, in the window) — NOT every field this device has ever sent. A field below that bar is still tracked locally (see store.js's field_capability table) but doesn't appear here; see docs/DESIGN.md's discovery design and docs/PROMOTION.md for why the bar exists.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fieldName", "type", "populatedCount", "populatedRate", "syntheticExample"],
+        "properties": {
+          "fieldName": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The real Glooko field name, verbatim (e.g. highestBolusValue, mealTag). Real key names are not sensitive; only VALUES are redacted (see syntheticExample)."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["number", "boolean", "date", "string", "nested-unsupported", "unknown"],
+            "description": "The field's JSON type as classified by discover.js's classify() — 'date' means an ISO-8601-shaped string specifically, 'nested-unsupported' means the field is an object/array (see docs/PROMOTION.md's open follow-up on nested-field promotion), 'unknown' is the fallback for anything classify() doesn't recognise."
+          },
+          "populatedCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many records in the window had this field populated (per store.js's isPopulatedValue: not null/undefined/NaN/empty-string; 0 and false count)."
+          },
+          "populatedRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "populatedCount / total records in the window, rounded to 3 decimal places."
+          },
+          "syntheticExample": {
+            "description": "NEVER a real value. A fixed, fabricated placeholder determined solely by `type` — see classify() in discover.js: number->12.34, boolean->true, date->\"2000-01-01T00:00:00.000Z\", string->\"example text\", nested-unsupported/unknown->null. submit-registry-entry.js's scanForLeakage() independently re-checks every entry against this exact fixed set before anything is written, without trusting discover.js's own classify() logic.",
+            "enum": [12.34, true, "2000-01-01T00:00:00.000Z", "example text", null]
+          }
+        }
+      }
+    }
+  }
+}

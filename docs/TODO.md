@@ -486,8 +486,22 @@ generalizing further.)
       get otherwise, not just a mechanical how-to), how to add a
       capability-gated module (with the real `GATED_MODULES` shape and a
       pointer to the one real example), and PR expectations.
-- [ ] Schema registry format spec — what a registry JSON file must contain
-      to be valid
+- [x] Schema registry format spec: `schema-registry/entry.schema.json`
+      (JSON Schema draft-07) — every field documented with the *why* behind
+      it (e.g. `deviceName`'s "not synthesized like the others, and not
+      always precise — Glooko itself reported this account's real Libre 3+
+      as plain 'Libre 3'" caveat), `fields[].type`/`syntheticExample`
+      constrained to the exact enums `discover.js`'s `classify()` and
+      `submit-registry-entry.js`'s independent `scanForLeakage()` allowlist
+      already use. Validated against both real entries already in this
+      registry (a hand-rolled checker, not a full JSON-Schema
+      implementation — not worth a new dependency for a one-off
+      verification; a real validator lib is Phase 6's job if/when CI needs
+      one). Also fixed two real staleness bugs found while writing this in
+      `schema-registry/README.md`: its own example still used the
+      corrected-away-from `initialDelivery` field name and was missing
+      `populatedCount`, and it claimed `CONTRIBUTING.md` didn't exist yet
+      (it now does, written just before this).
 - [ ] Setup/installation guide (Glooko credentials, `.env`, first-run
       experience, what "offline/sample data mode" looks like)
 - [ ] Troubleshooting guide
