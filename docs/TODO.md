@@ -144,9 +144,7 @@ tool deserves the same explicit, one-by-one check, not an assumption that
       unconditionally deleted on mismatch, which would have destroyed an
       already-merged registry entry in a real failure).
 - [x] Seamless in-session PR submission (`gh pr create`):
-      `openRegistryPullRequest()` in `submit-registry-entry.js`, wired into
-      `main()` after every written entry has already passed the typed
-      confirmation, independent scan, and write/re-read hash check. Creates
+      `openRegistryPullRequest()` in `submit-registry-entry.js`. Creates
       one branch, stages exactly the written files (never `git add -A`),
       commits, pushes, and opens the PR. Falls back to a clear "written and
       verified locally, finish this yourself" message (per DESIGN.md's "no
@@ -159,6 +157,27 @@ tool deserves the same explicit, one-by-one check, not an assumption that
       and confirmed a push-succeeds-but-PR-creation-fails case reports
       cleanly with the commit left intact. Never touched the real
       superglookoquery repo or opened a real PR during testing.
+      **Corrected same day**: this item was originally marked done when
+      only `main()`'s CLI orchestration used it — that meant a real Claude
+      Desktop end user could never actually reach this at all (no terminal
+      in that environment), which is not "seamless from the AI session" by
+      any reading of the original ask. Caught when the user actually tried
+      the CLI flow and asked "is this really the end-user experience?".
+      Fixed by adding `runChatDrivenSubmission()` plus two new MCP tools in
+      `server.js` (`get_registry_contribution_report` /
+      `submit_registry_contribution`) that Claude calls directly — the
+      human review-and-confirm step now happens in the chat itself. Since
+      the confirm step no longer runs synchronously right after the report
+      is built, added a staleness guard (`hashReportContent()`, deliberately
+      excluding the report's own volatile `discoveredAt` timestamp from what
+      gets compared — a first version hashed the WHOLE report including
+      that timestamp and failed its own tests 100% of the time, since
+      `buildComponentReports()` stamps a fresh wall-clock time on every
+      call regardless of whether anything real changed). Verified end-to-
+      end with `test/registry-submission-flow.test.js` (wrong-phrase
+      refusal, stale-report refusal, and a full write against a real,
+      synthetic-but-realistic seeded archive) and manually against the
+      real archive (stable hash across two consecutive real builds).
 - [x] Capability-gated module registration in `server.js`: `GATED_MODULES` +
       `registerCapabilityGatedModules()`, checked against `store.js`'s
       `field_capability` state. Runs *after* `server.connect()`, not inside
@@ -249,11 +268,22 @@ generalizing further.)
       ever summarised `cgm`/`bolus` — so the CamAPS breakdown itself won't
       appear in a registry entry yet either; that's a real, separate gap,
       not urgent since a registry entry is about device capability
-      discovery, not this account's own live tool.) **Still not run**: the
-      submission sequence's typed-confirmation step needs a human physically
-      at a terminal (by design, not scriptable), and actually opening it
-      submits a real PR to the public repo — both are for the user to
-      decide to do, not something to run as a side effect of other work.
+      discovery, not this account's own live tool.) **Attempted for real,
+      not yet completed**: the user ran the CLI flow live and got as far as
+      the confirmation prompt, which surfaced a real finding — the CGM
+      entry shows `(unknown device name)` / slug `unknown-cgm`, because
+      this account's CGM `extra` data has no `deviceName` field at all
+      (only the pump's does; see the report shown). Not a safety issue,
+      just means the CGM entry would file under a generic slug rather than
+      something identifiable as "Libre 3+" — worth deciding whether to fix
+      before submitting (see if a device name is derivable some other way)
+      or just accept it. Also prompted discovering that the CLI script
+      wasn't actually reachable by a real end user at all, which is now
+      fixed (see the corrected entry above) — the real submission should
+      now happen via `get_registry_contribution_report` /
+      `submit_registry_contribution` in a live chat, or the CLI script for
+      local dev, either way still needing the user's own typed confirmation
+      and their own decision to open a real PR to the public repo.
 
 ## Phase 3 — Testing
 

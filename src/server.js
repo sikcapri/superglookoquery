@@ -43,7 +43,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, fileURLToPath } from 'url';
 
 import {
   getProcessedRange,
@@ -75,6 +75,17 @@ import {
 } from './analytics.js';
 import { renderChartHtml } from './chartHtml.js';
 import { PERSONA_PROMPT } from './prompt.js';
+import { buildComponentReports } from './discover.js';
+import {
+  hashReportContent,
+  runChatDrivenSubmission,
+  REQUIRED_PHRASE,
+} from './submit-registry-entry.js';
+
+// Repo root (one level up from src/), for the schema-registry submission
+// tools below — same computation submit-registry-entry.js's own CLI main()
+// uses, just via fileURLToPath instead of a hand-rolled regex.
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Module-scope (not inside createServer()) deliberately: these are pure
 // helpers with no dependency on a particular server instance, and the
@@ -1447,6 +1458,113 @@ server.registerTool(
   }
 );
 
+
+// --- get_registry_contribution_report / submit_registry_contribution -----
+// The chat-driven, MCP-tool version of DESIGN.md's submission gating
+// sequence — see submit-registry-entry.js's own header for the full
+// sequence these two tools still enforce underneath. Before this pair
+// existed, the ONLY way to contribute was a bare CLI script
+// (`node src/submit-registry-entry.js`), which a real Claude Desktop user
+// can never run at all (no terminal in that environment) — these tools are
+// what actually makes the "seamless from the AI session" goal true for a
+// real end user, not just for a developer at a terminal.
+//
+// Split into two calls because the human's review-and-confirm step now
+// happens IN THE CHAT, not synchronously inside one script run: tool 1
+// builds the report and hashes it; tool 2 is only ever invoked with a real
+// user-typed confirmation phrase AND the exact hash tool 1 returned. Tool 2
+// recomputes the report fresh (never trusts a caller-supplied report body)
+// and refuses if its fresh hash doesn't match what was reviewed — the
+// underlying archive could in principle change between the two calls (e.g.
+// a sync happens mid-conversation), and this is what stops a stale-approved
+// report from ever being what actually gets submitted.
+server.registerTool(
+  'get_registry_contribution_report',
+  {
+    title: 'Preview a schema registry contribution (step 1 of 2)',
+    description:
+      'Builds the privacy-guardrailed discovery report for this account\'s ' +
+      'device(s) — step 1 of contributing to the public schema registry. ' +
+      'Contains NO real values from the account: every example is a fixed, ' +
+      'fabricated placeholder (see docs/DESIGN.md section 2b); only field ' +
+      'names, types, and how often each is populated are real.\n\n' +
+      'CRITICAL — how to use this: show the patient the FULL entries array ' +
+      'verbatim (every field, every example, exactly as returned — never ' +
+      'summarise, paraphrase, or omit any of it) and the disclaimer text, ' +
+      'then ask them to type the exact confirmation phrase in ' +
+      '`requiredPhrase` if and ONLY if they have personally reviewed it and ' +
+      'confirm it contains nothing sensitive. Do NOT proceed to ' +
+      'submit_registry_contribution on the patient\'s behalf without them ' +
+      'actually typing that phrase themselves — a paraphrase, a "yes", or ' +
+      'your own judgement that it looks fine are not acceptable substitutes ' +
+      'for this gate. When they do confirm, call submit_registry_contribution ' +
+      'with confirmationPhrase set to EXACTLY what they typed and reportHash ' +
+      'set to EXACTLY this call\'s own `reportHash` value.\n\n' +
+      'Returns: generatedAt, disclaimer, requiredPhrase (the exact string the ' +
+      'patient must type), entries (one per device component: component, ' +
+      'deviceName, slug, discoveredAt, windowDaysActual, lowConfidence, ' +
+      'fields), and reportHash (an opaque integrity token for the next call — ' +
+      'not meant to be shown to the patient).',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      const entries = await buildComponentReports();
+      return jsonResult({
+        generatedAt: new Date().toISOString(),
+        disclaimer:
+          'By confirming, you are stating that you have personally reviewed ' +
+          'the report above and it contains no real values, personal ' +
+          'identifiers, or health data from your account.',
+        requiredPhrase: REQUIRED_PHRASE,
+        entries,
+        reportHash: hashReportContent(entries),
+      });
+    } catch (err) {
+      return errorResult(err.message);
+    }
+  }
+);
+
+server.registerTool(
+  'submit_registry_contribution',
+  {
+    title: 'Confirm and submit a schema registry contribution (step 2 of 2)',
+    description:
+      'Step 2: after the patient has reviewed get_registry_contribution_report\'s ' +
+      'output IN FULL and typed its exact confirmation phrase themselves, call ' +
+      'this with that phrase and the report\'s reportHash to actually write and ' +
+      'submit the contribution. Runs the full gating sequence: exact-match ' +
+      'phrase check, an INDEPENDENT second privacy scan (does not trust ' +
+      'discover.js\'s own redaction — re-checks against a hard allowlist), a ' +
+      'content-integrity hash check (refuses if the archive changed since the ' +
+      'report was reviewed — re-call get_registry_contribution_report and ' +
+      're-confirm if this happens), then writes to schema-registry/ and opens ' +
+      'a PR via the GitHub CLI if it is installed and authenticated.\n\n' +
+      'If `gh` is not available, or nothing needs submitting, or the PR step ' +
+      'fails, files are still written and hash-verified locally — nothing is ' +
+      'ever lost, and this is reported clearly rather than silently.',
+    inputSchema: {
+      confirmationPhrase: z.string().describe(
+        'EXACTLY what the patient themselves typed in response to the ' +
+        'required phrase from get_registry_contribution_report — not your ' +
+        'own paraphrase or judgement call.'
+      ),
+      reportHash: z.string().describe(
+        'The `reportHash` value from the get_registry_contribution_report ' +
+        'call the patient actually reviewed, passed through verbatim.'
+      ),
+    },
+  },
+  async ({ confirmationPhrase, reportHash }) => {
+    try {
+      const result = await runChatDrivenSubmission({ confirmationPhrase, reportHash, repoRoot });
+      return jsonResult(result);
+    } catch (err) {
+      return errorResult(err.message);
+    }
+  }
+);
 
 // --- persona prompt -------------------------------------------------------
 server.registerPrompt(

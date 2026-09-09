@@ -17,11 +17,19 @@
  *      leaving anything in a half-done state.
  *
  * The functions here are deliberately split into pure/testable pieces
- * (scanForLeakage, hashContent, writeAndVerify) and the interactive CLI
- * orchestration (promptTypedConfirmation, main) — the former can and should
- * be exercised by automated tests; the latter, by its nature, requires a
- * real human typing a real confirmation and can't be meaningfully faked
- * without defeating the entire point of the gate.
+ * (scanForLeakage, hashContent, writeAndVerify) and two ORCHESTRATION paths
+ * built on top of them:
+ *   - The interactive CLI (promptTypedConfirmation, main) — requires a real
+ *     terminal and a real human typing a real confirmation; useful for
+ *     local development, but NOT something a real Claude Desktop end user
+ *     can ever run (that environment has no terminal at all).
+ *   - runChatDrivenSubmission() — the one server.js's MCP tools actually
+ *     use (get_registry_contribution_report / submit_registry_contribution),
+ *     so an end user can do this from inside the chat itself, which is what
+ *     DESIGN.md's "seamless from the AI session" goal actually meant. The
+ *     human review-and-confirm step happens in the conversation instead of
+ *     synchronously in one script run, so this path adds a content-hash
+ *     staleness check (see hashReportContent) the CLI path never needed.
  */
 
 import fs from 'fs';
@@ -32,7 +40,7 @@ import { execFileSync } from 'child_process';
 import { pathToFileURL } from 'url';
 import { buildComponentReports } from './discover.js';
 
-const REQUIRED_PHRASE = 'I have reviewed this and confirm it contains no personal data';
+export const REQUIRED_PHRASE = 'I have reviewed this and confirm it contains no personal data';
 
 // The exact, fixed set of values discover.js's classify() is documented to
 // ever produce as a syntheticExample. This scanner does NOT import or call
@@ -235,6 +243,87 @@ export function openRegistryPullRequest({ repoRoot, filePaths, slugs, confirmedA
         `The commit is safe — push it and run "gh pr create" yourself to finish.`,
     };
   }
+}
+
+/**
+ * Hash of a report's MEANINGFUL content, for detecting whether the archive
+ * changed between "shown to the patient" and "confirmed" (see
+ * runChatDrivenSubmission below). Deliberately excludes `discoveredAt`:
+ * buildComponentReports() stamps a fresh wall-clock time on every call, so
+ * two calls moments apart over IDENTICAL underlying data would otherwise
+ * always hash differently — found by this file's own test suite catching
+ * every submission attempt failing the staleness check, not just a genuine
+ * data change. `writeAndVerify`'s own per-entry `hashContent(entry)` call
+ * (used for the actual write-then-read-back integrity check) is unrelated
+ * and correctly DOES include discoveredAt — that comparison is self-
+ * consistent within one synchronous call, with no regeneration gap for a
+ * timestamp to drift across.
+ */
+export function hashReportContent(entries) {
+  return hashContent(entries.map(({ discoveredAt, ...rest }) => rest));
+}
+
+/**
+ * The chat-driven equivalent of main()'s CLI orchestration below, used by
+ * server.js's get_registry_contribution_report / submit_registry_contribution
+ * MCP tools. The human's review-and-confirm step happens in the chat, not
+ * synchronously in this one call, so the integrity guarantee is done with a
+ * hash round-trip instead: the caller must pass back the exact `reportHash`
+ * a prior report build produced, and this function refuses to proceed if a
+ * FRESH report (rebuilt here, never trusting a caller-supplied report body)
+ * hashes differently — the underlying archive changing between "shown to
+ * the patient" and "confirmed" is the one thing this guards against that
+ * the CLI path never has to, since it never has a gap for that to happen in.
+ *
+ * Returns { written, failures, anyFailed, pr } on success/partial-success,
+ * or throws only for a mismatched phrase or a stale reportHash (the caller
+ * — server.js's tool handlers — turns those into a plain error result;
+ * they are not something scanForLeakage/writeAndVerify-level try/catch
+ * should swallow per-entry, they mean nothing should be written at all).
+ */
+export async function runChatDrivenSubmission({ confirmationPhrase, reportHash, repoRoot }) {
+  if (confirmationPhrase.trim() !== REQUIRED_PHRASE) {
+    throw new Error('Confirmation phrase did not match exactly. Nothing was submitted.');
+  }
+
+  const entries = await buildComponentReports();
+  const freshHash = hashReportContent(entries);
+  if (freshHash !== reportHash) {
+    throw new Error(
+      'The underlying data has changed since that report was reviewed (e.g. ' +
+      'a new sync happened in the meantime) — refusing to submit against a ' +
+      'stale approval. Build a fresh report and re-confirm.'
+    );
+  }
+
+  const written = [];
+  const failures = [];
+  for (const entry of entries) {
+    const scan = scanForLeakage(entry);
+    if (!scan.ok) {
+      failures.push({ slug: entry.slug, reason: 'independent privacy scan failed', problems: scan.problems });
+      continue;
+    }
+    const confirmedHash = hashContent(entry);
+    try {
+      const filePath = writeAndVerify(entry, confirmedHash, repoRoot);
+      written.push({ slug: entry.slug, filePath });
+    } catch (err) {
+      failures.push({ slug: entry.slug, reason: err.message });
+    }
+  }
+
+  let pr = null;
+  if (written.length) {
+    pr = openRegistryPullRequest({
+      repoRoot,
+      filePaths: written.map((w) => w.filePath),
+      slugs: written.map((w) => w.slug),
+      confirmedAtIso: new Date().toISOString(),
+    });
+  }
+
+  return { written, failures, anyFailed: failures.length > 0, pr };
 }
 
 function renderEntryText(entry) {
