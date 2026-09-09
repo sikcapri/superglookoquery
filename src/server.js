@@ -1195,8 +1195,16 @@ server.registerTool(
       'What the pump\'s automated-delivery algorithm was doing with basal over ' +
       'time: delivering normally, pausing it (suspend), running at its ceiling ' +
       '(max), or running blind on a fixed preset because it lost CGM signal ' +
-      '(limited — Omnipod 5 specific; expect this state to simply never occur ' +
-      'on other pumps rather than being reported incorrectly).\n\n' +
+      '(limited).\n\n' +
+      'DEVICE COVERAGE: this reads an Omnipod-5-specific Glooko data series. ' +
+      'Confirmed empty (never populated) for a CamAPS FX account, likely the ' +
+      'same for other non-Omnipod pumps — an empty result means this view ' +
+      'genuinely isn\'t available for that device, NOT that basal ran normally ' +
+      'throughout; never present the absence of data as a normal reading. For a ' +
+      'CamAPS FX account, get_camaps_pump_mode_breakdown\'s automatic/manual/ ' +
+      'easeOff/boost/liberty/attempting percentages are the nearest available ' +
+      'picture of algorithm behaviour, though not a like-for-like replacement ' +
+      'for this state timeline.\n\n' +
       'IMPORTANT: these are STATES describing the algorithm\'s behaviour, NOT ' +
       'insulin amounts. "suspend" means paused, "max" means at the ceiling; ' +
       'neither is a number of units. (For basal units, use get_daily_insulin.)\n\n' +
@@ -1255,11 +1263,17 @@ server.registerTool(
   {
     title: 'Pod and CGM sensor changes',
     description:
-      'Pod changes (the Omnipod is replaced roughly every 3 days) and CGM sensor ' +
-      'changes, as timestamped events, kept as two separate lists.\n\n' +
+      'Pod/site changes (e.g. the Omnipod is replaced roughly every 3 days) and ' +
+      'CGM sensor changes, as timestamped events, kept as two separate lists.\n\n' +
+      'DEVICE COVERAGE: whether Glooko reports these events at all depends on ' +
+      'the device — confirmed empty (never populated, over a full 30-day check) ' +
+      'for a CamAPS FX + Ypso Pump account. Both counts being zero can mean ' +
+      'this device combination doesn\'t report site/sensor changes to Glooko in ' +
+      'a way this project can see, not that no changes happened — never assert ' +
+      'the latter from an empty result.\n\n' +
       'These are point-in-time markers, not amounts. They are most useful as ' +
-      'CONTEXT for nearby glucose disruption: a fresh pod can run high for the ' +
-      'first hours while the cannula settles, and a new sensor can read ' +
+      'CONTEXT for nearby glucose disruption: a fresh pod/site can run high for ' +
+      'the first hours while the cannula settles, and a new sensor can read ' +
       'erratically while it warms up. Use them to check whether an unexplained ' +
       'high or a run of odd readings lines up with a recent change. Treat any ' +
       'such link as a possible contributing factor, never assert it as the ' +

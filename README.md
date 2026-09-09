@@ -260,10 +260,10 @@ Most tools accept optional `units`, `lower`, and `upper` parameters. If Claude o
 | `get_enriched_bolus_log` | Every bolus in a window (capped to 92 days), enriched with the interpolated CGM value at delivery and the ISF/carb-ratio/target/DIA active at that moment, plus delivered-vs-programmed and calculator overrides. Filterable by bolus class. |
 | `get_split_bolus_log` | Every SPLIT (extended/dual-wave) bolus in a window — one with a real extended-delivery portion — plus aggregate stats (split rate, average initial-delivery percent) over the whole bolus population in the window. A window with no split boluses is a normal result, not an error. |
 | `get_hourly_trends` | Time in range and average glucose pooled by clock-hour across a window — useful for the dawn phenomenon, consistent evening highs, and other time-of-day patterns. |
-| `get_basal_delivery` | What the pump's algorithm was doing with basal delivery over time, as behavioural states (`normal` / `suspend` / `max` / `limited`), not units. |
+| `get_basal_delivery` | What the pump's algorithm was doing with basal delivery over time, as behavioural states (`normal` / `suspend` / `max` / `limited`), not units. Reads an Omnipod-5-specific Glooko data series — confirmed empty for a CamAPS FX account (a data-representation gap, not a claim CamAPS lacks basal; see `get_camaps_pump_mode_breakdown` for that device's nearest equivalent). |
 | `get_daily_insulin` | Glooko's own per-day basal/bolus/total insulin totals, shown verbatim, for a day-by-day table or total-daily-dose figures. |
 | `get_settings_history` | Every pump setting change in force during a window: DIA, max basal rate, and the time-segmented target/ISF/carb-ratio profiles. |
-| `get_device_events` | Pod/site change and CGM sensor change timestamps — context only, never asserted as a cause of nearby glucose disruption. |
+| `get_device_events` | Pod/site change and CGM sensor change timestamps — context only, never asserted as a cause of nearby glucose disruption. Whether Glooko reports these depends on the device — confirmed empty for a CamAPS FX + Ypso Pump account. |
 | `get_meal_window_analysis` | A focused look at one meal or bolus event: 30 minutes before to 3 hours after, with the glucose trace and any boluses in that window. |
 
 ### Capability-gated tools (appear only if your account's data supports them)

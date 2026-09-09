@@ -25,25 +25,62 @@ tool deserves the same explicit, one-by-one check, not an assumption that
 "additive schema changes can't break anything."
 
 - [x] `get_chart_html` — verified (see above)
-- [ ] `get_diabetes_summary`
-- [ ] `get_trend`
-- [ ] `get_glucose`
-- [ ] `get_chart_series`
-- [ ] `get_enriched_bolus_log`
-- [ ] `get_hourly_trends`
-- [ ] `get_basal_delivery`
-- [ ] `get_daily_insulin`
-- [ ] `get_settings_history`
-- [ ] `get_device_events`
-- [ ] `get_meal_window_analysis`
-- [ ] the `clinical_auditor` prompt (not data-shape-sensitive, but confirm
-      it still loads and reads sensibly against current tool descriptions)
+- [x] `get_diabetes_summary` (`computeSummary`) — verified against the real
+      archive (14-day window: 51% TIR, sensible day count)
+- [x] `get_trend` (`bucketTrend`) — verified (weekly buckets over the real
+      archive, sensible per-bucket glucose/coverage figures)
+- [x] `get_glucose` (raw CGM filter + `toDisplay`/`toDisplayDelta`) — verified
+- [x] `get_chart_series` (`downsampleForChart`) — verified
+- [x] `get_enriched_bolus_log` (`buildEnrichedBolusLog`) — verified
+- [x] `get_hourly_trends` (`calculateHourly`) — verified
+- [x] `get_basal_delivery` — **real finding, not a regression**: confirmed
+      ZERO basal-state rows exist anywhere in the real archive (checked a
+      full 90-day window). Traced to the source: `deriveBasalStates()`
+      reads Omnipod-5-specific Glooko series
+      (`basalBarAutomated`/`Max`/`Suspend`), and a live check confirmed all
+      three are genuinely empty arrays for this CamAPS FX account over a
+      full 30-day fetch — not a fluke, not a bug this session introduced.
+      To be clear (corrected after being challenged on this): this is NOT
+      a claim that CamAPS lacks basal rates — it obviously has them — it's
+      that Glooko's `data1`/`data2`/`data3` feed for this account has no
+      per-interval basal-state or basal-rate timeline anywhere in it
+      (checked all three payload sections). The closest thing this feed
+      does expose for a CamAPS account is the pump-mode percentage
+      breakdown already captured by `get_camaps_pump_mode_breakdown`
+      (section 4). Updated `get_basal_delivery`'s description, the
+      `clinical_auditor` prompt, and the README to say this precisely —
+      an empty result must never be read as "basal ran normally."
+- [x] `get_daily_insulin` (`bundle.dailyInsulin` passthrough) — verified,
+      sensible per-day basal/bolus/total figures
+- [x] `get_settings_history` (`bundle.settingsHistory` passthrough) —
+      verified, one active snapshot found as expected
+- [x] `get_device_events` — **same category of finding as
+      `get_basal_delivery`**: confirmed zero pod/site and zero sensor
+      change events over a full 30-day live fetch (`setSiteChange`/
+      `cgmSensorChange` both genuinely empty arrays for this account).
+      Same caveat added to the tool description and the prompt: empty is
+      not evidence nothing changed, it may just be data this device
+      doesn't report to Glooko this way.
+- [x] `get_meal_window_analysis` — verified (a real bolus event's window
+      correctly pulled its CGM trace and itself in the enriched log)
+- [x] the `clinical_auditor` prompt — **found and fixed a real branding/
+      accuracy bug**: the persona's own instructions described it as "a
+      world-class authority on the Omnipod 5 (O5) SmartAdjust algorithm"
+      and told it to "conduct a clinical audit of the patient's Omnipod 5
+      data" — actively misleading for any non-Omnipod account, including
+      this project's own reference CamAPS FX account. Generalised the
+      persona/mission language to name multiple systems and told it to
+      identify which one the patient actually uses rather than assume;
+      added the same `get_basal_delivery`/`get_device_events` device-
+      coverage caveats to the prompt's own tool-routing guide; added a
+      line for `get_camaps_pump_mode_breakdown` noting it's capability-
+      gated and may not appear at all.
 
-For each: call it for real against the live-synced archive (not just a
-synthetic test), confirm the output is sensible, and add a `test/`
-regression test locking in the specific field names/shapes it depends on
-— exactly the kind of pinning that would have caught the bolus
-split-field bug immediately instead of requiring a live sync to discover.
+Still open from this pass: regression tests locking in each tool's exact
+field/shape dependencies (the synthetic-data pinning that would have
+caught the bolus split-field bug immediately, per the original framing of
+this phase) — the live-data verification above is done, the `test/`
+coverage for it is not yet written.
 
 ## Phase 1 — Core architecture (from DESIGN.md)
 
