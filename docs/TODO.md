@@ -368,9 +368,6 @@ generalizing further.)
 - [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
       through the actual guardrail sequence), how to add a capability
       module, coding conventions
-- [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
-      through the actual guardrail sequence), how to add a capability
-      module, coding conventions
 - [ ] Schema registry format spec — what a registry JSON file must contain
       to be valid
 - [ ] Setup/installation guide (Glooko credentials, `.env`, first-run
