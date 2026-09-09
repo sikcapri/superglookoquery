@@ -76,11 +76,24 @@ tool deserves the same explicit, one-by-one check, not an assumption that
       line for `get_camaps_pump_mode_breakdown` noting it's capability-
       gated and may not appear at all.
 
-Still open from this pass: regression tests locking in each tool's exact
-field/shape dependencies (the synthetic-data pinning that would have
-caught the bolus split-field bug immediately, per the original framing of
-this phase) — the live-data verification above is done, the `test/`
-coverage for it is not yet written.
+- [x] Regression tests locking in each tool's exact field/shape
+      dependencies, closing out this phase: `test/tools.test.js` (new —
+      `computeSummary`'s full return shape including the `bestWorst`
+      nesting, `bucketTrend`, `calculateHourly`'s real field names,
+      `downsampleForChart`'s exact bolus-marker keys, `buildEnrichedBolusLog`'s
+      `context.DIA`/`active_cr` resolution, `summariseBasalStates`'s
+      `available:false` and populated shapes, `buildDaySummaries`,
+      `toDisplay`/`toDisplayDelta`) and `test/store.test.js` (extended —
+      `ingestDailyInsulin`/`getDailyInsulin`, `ingestBasalStates`/
+      `getBasalStates`, `ingestDeviceEvents`/`getDeviceEvents` including
+      the empty-is-not-an-error case, `getSettingsHistory`'s baseline-
+      snapshot-before-window-start behaviour). Several first-draft
+      assertions were themselves wrong about the real field names/nesting
+      (`bestDay`/`worstDay` are nested under `bestWorst`, `calculateHourly`
+      uses `tir`/`readings` not `timeInRange`, bolus context is `DIA` not
+      `DIA_hours`) — caught immediately by the tests failing against the
+      real functions rather than by guessing, exactly the discipline this
+      phase exists to enforce. 47/47 tests pass.
 
 ## Phase 1 — Core architecture (from DESIGN.md)
 

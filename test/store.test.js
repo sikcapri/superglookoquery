@@ -17,6 +17,13 @@ const {
   takeNewlyConfirmedCapabilities,
   recordFieldCapabilities,
   isPopulatedValue,
+  ingestDailyInsulin,
+  getDailyInsulin,
+  ingestBasalStates,
+  getBasalStates,
+  ingestDeviceEvents,
+  getDeviceEvents,
+  getSettingsHistory,
   _wipe,
 } = await import('../src/store.js');
 
@@ -96,4 +103,64 @@ test('recordFieldCapabilities works standalone for a category outside the cgm/bo
   assert.equal(isCapabilityConfirmed('stats', 'camapsPumpModeAutomaticPercentage'), true);
   assert.equal(isCapabilityConfirmed('stats', 'camapsPumpModeManualPercentage'), true, 'a real 0 must still count');
   assert.equal(isCapabilityConfirmed('stats', 'neverSeenField'), false);
+});
+
+// Phase 3.5's backwards feature audit: get_daily_insulin, get_basal_delivery,
+// get_device_events, and get_settings_history all read straight from these
+// store.js functions with no analytics.js transformation in between — the
+// round-trip IS the whole tool.
+
+test('ingestDailyInsulin + getDailyInsulin round-trips per-day totals, with complete flagged by todayUtc', () => {
+  ingestDailyInsulin([
+    { dayUtc: '2026-01-01', dayEpoch: 1767225600, basalUnits: 18, bolusUnits: 20.1, totalUnits: 38.1 },
+    { dayUtc: '2026-01-02', dayEpoch: 1767312000, basalUnits: 17, bolusUnits: 15, totalUnits: 32 },
+  ], '2026-01-02'); // today is the 2nd, so the 1st must be complete and the 2nd provisional
+  const rows = getDailyInsulin(1767225600, 1767312000 + 86400);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].complete, true);
+  assert.equal(rows[1].complete, false);
+  assert.equal(rows[0].totalUnits, 38.1);
+});
+
+test('ingestBasalStates + getBasalStates round-trips state intervals', () => {
+  ingestBasalStates([
+    { start: '2026-01-01T00:00:00.000Z', end: '2026-01-01T01:00:00.000Z', state: 'normal', startEpoch: 1767225600, endEpoch: 1767229200, minutes: 60 },
+    { start: '2026-01-01T01:00:00.000Z', end: '2026-01-01T01:10:00.000Z', state: 'suspend', startEpoch: 1767229200, endEpoch: 1767229800, minutes: 10 },
+  ]);
+  const rows = getBasalStates(1767225600, 1767229800);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].state, 'normal');
+  assert.equal(rows[0].minutes, 60);
+  assert.equal(rows[1].state, 'suspend');
+});
+
+test('ingestDeviceEvents + getDeviceEvents round-trips pod/sensor changes as separate lists', () => {
+  ingestDeviceEvents({
+    podChanges: [{ epoch: 1767225600 }],
+    sensorChanges: [{ epoch: 1767229200 }, { epoch: 1767312000 }],
+  });
+  const events = getDeviceEvents(1767225600, 1767312000);
+  assert.equal(events.podChanges.length, 1);
+  assert.equal(events.sensorChanges.length, 2);
+  assert.ok(events.podChanges[0].time);
+});
+
+test('getDeviceEvents returns empty (not an error) lists when nothing was ever ingested', () => {
+  const events = getDeviceEvents(0, 9999999999);
+  assert.deepEqual(events, { podChanges: [], sensorChanges: [] });
+});
+
+test('getSettingsHistory returns the baseline snapshot active at window start, even if it predates the window', () => {
+  ingestTimeline([], [
+    { activeTimestamp: '2025-12-01T00:00:00.000Z', settings: { generalSettings: { activeInsulinTime: 4 } } },
+    { activeTimestamp: '2026-01-15T00:00:00.000Z', settings: { generalSettings: { activeInsulinTime: 5 } } },
+  ]);
+  // Window starts well after the first snapshot but before the second -- the
+  // first (still in force) must be the one returned, not omitted.
+  const history = getSettingsHistory(
+    Math.floor(Date.parse('2026-01-01T00:00:00.000Z') / 1000),
+    Math.floor(Date.parse('2026-01-10T00:00:00.000Z') / 1000)
+  );
+  assert.equal(history.length, 1);
+  assert.equal(history[0].settings.generalSettings.activeInsulinTime, 4);
 });
