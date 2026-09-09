@@ -412,8 +412,24 @@ generalizing further.)
       as a documented reliability edge for anyone who later needs many
       ingest calls in one long-lived process (see the generator's own
       header comment for the full account).
-- [ ] A manual test plan for a fresh install / cold-start flow, since that's
-      what every new contributor's first run actually looks like
+- [x] A manual test plan for a fresh install / cold-start flow:
+      `docs/MANUAL_TEST_PLAN.md` — 9 steps from a bare `git clone` through
+      Claude Desktop install, offline sample-data mode, switching to a real
+      account, capability-gating, corruption recovery, and `.mcpb`
+      packaging, each naming exactly what to run and what to check.
+      Several steps were actually run for real while writing this (not
+      just described): a genuinely fresh `git clone` + `npm install` +
+      `npm test` (67/67 pass), the offline sample-data seed (confirmed
+      non-zero CGM count and a clean server start with no unexpected
+      `tools/list_changed`), and the corruption/quarantine recovery path
+      (truncated a real archive file, confirmed the server logs the
+      quarantine, moves the corrupt file aside with a `.corrupt-<timestamp>`
+      suffix, and starts a fresh empty archive instead of crashing). The
+      Claude Desktop UI steps and the `.mcpb` packaging step are documented
+      but need a human/an actual Desktop install to run — not something to
+      fake. The plan's own closing section ties each check back to a real
+      bug this project already found by hand once, as the reason it's a
+      standing checklist and not a hypothetical one.
 
 ## Phase 4 — Documentation
 

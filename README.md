@@ -306,6 +306,7 @@ The data flows: Glooko → sync → store → range → analytics → tools → 
 * **`scripts/generate-sample-data.mjs`** — regenerates the bundled sample database from entirely synthetic, seeded-random data (never a real account's data).
 * **`test/`** — the automated test suite, see [Running the Tests](#running-the-tests).
 * **`docs/DESIGN.md`** / **`docs/PROMOTION.md`** / **`docs/TODO.md`** — the architecture spec, the process for graduating a discovered field into a typed column, and the running project roadmap, in that order of how deep you want to go.
+* **`docs/MANUAL_TEST_PLAN.md`** — the fresh-install/cold-start checklist to run before cutting a release; `npm test` covers unit-level logic, this covers everything that only shows up against a genuinely empty starting state or a real Claude Desktop install.
 
 A few invariants hold throughout: glucose is stored internally in one canonical unit (mmol/L) and only converted on output; bolus is summed from individual events while basal comes from Glooko's daily totals; all times are plain wall-clock time, not UTC (see "A note on timestamps" above); and per-day rates use the real observed span of data.
 
