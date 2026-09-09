@@ -521,9 +521,18 @@ generalizing further.)
       directly, the sql.js many-persist()-cycles reliability edge, and a
       Windows folder-move "item is in use" caused by a lingering process/
       browser tab), each with the actual fix, not a hypothetical one.
-- [ ] Keep `docs/DESIGN.md` as the living source of truth, updated as
-      implementation reveals design gaps (already happened twice during
-      planning — will keep happening)
+- [x] Keep `docs/DESIGN.md` as the living source of truth — a standing
+      practice, not a one-time task, and one already demonstrably followed
+      well past the "twice during planning" this item was originally
+      written against: this implementation phase alone corrected DESIGN.md
+      three more times (the CamAPS pump-mode location — first guessed as
+      `extra`, then wrongly as basal data, then found for real in the
+      stats blob; the promotion-trigger-ownership follow-up resolved once
+      `docs/PROMOTION.md` existed; the nested-fields follow-up's own
+      example corrected once it turned out not to apply). Checked off here
+      not because the practice is "done" — it never is — but because
+      leaving it perpetually unchecked in a checklist meant to track real
+      progress was itself misleading.
 
 ## Phase 5 — Repo hygiene
 
