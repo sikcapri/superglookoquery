@@ -502,8 +502,16 @@ generalizing further.)
       corrected-away-from `initialDelivery` field name and was missing
       `populatedCount`, and it claimed `CONTRIBUTING.md` didn't exist yet
       (it now does, written just before this).
-- [ ] Setup/installation guide (Glooko credentials, `.env`, first-run
-      experience, what "offline/sample data mode" looks like)
+- [x] Setup/installation guide — checked first whether this was already
+      covered before writing anything new (it mostly was): README.md's
+      "Installing the Extension" / "Configuring Your Settings" / "Trying it
+      with the sample data" / "Using your own Glooko data" sections already
+      fully cover the real end-user (packaged `.mcpb`) setup, credentials,
+      first-run experience, and offline mode. The one real gap was the
+      *local dev* path (`npm start` with no `.env` at all) — not documented
+      anywhere. Verified it for real (truly zero env vars, via `env -i`) and
+      added it to `CONTRIBUTING.md`'s "Development setup" section rather
+      than create a third, redundant setup document.
 - [ ] Troubleshooting guide
 - [ ] Keep `docs/DESIGN.md` as the living source of truth, updated as
       implementation reveals design gaps (already happened twice during
