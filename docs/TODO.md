@@ -477,9 +477,15 @@ generalizing further.)
       away). Personal contact info (the original author's LinkedIn) was
       dropped rather than guessed at for the new maintainer — GitHub
       Issues is the one support channel stated, matching `manifest.json`.
-- [ ] `CONTRIBUTING.md` — how to submit a schema registry entry (walking
-      through the actual guardrail sequence), how to add a capability
-      module, coding conventions
+- [x] `CONTRIBUTING.md` — dev setup, coding conventions (each one framed as
+      "this exists because X went wrong without it," not arbitrary style —
+      e.g. never guess a Glooko field name from memory, `analytics.js`'s
+      zero-import rule, keep `server.js` thin), testing patterns, walking
+      through the real chat-driven schema registry submission sequence
+      (with an explicit WHY paragraph — evidence this project has no way to
+      get otherwise, not just a mechanical how-to), how to add a
+      capability-gated module (with the real `GATED_MODULES` shape and a
+      pointer to the one real example), and PR expectations.
 - [ ] Schema registry format spec — what a registry JSON file must contain
       to be valid
 - [ ] Setup/installation guide (Glooko credentials, `.env`, first-run
