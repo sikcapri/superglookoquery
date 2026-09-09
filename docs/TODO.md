@@ -512,7 +512,15 @@ generalizing further.)
       anywhere. Verified it for real (truly zero env vars, via `env -i`) and
       added it to `CONTRIBUTING.md`'s "Development setup" section rather
       than create a third, redundant setup document.
-- [ ] Troubleshooting guide
+- [x] Troubleshooting guide — README.md's own "Troubleshooting" section
+      already covers the real end-user (packaged extension) cases in full.
+      Added a separate "Troubleshooting (development)" section to
+      `CONTRIBUTING.md` instead of duplicating that: three REAL problems
+      hit while building this project this session (Windows `git`/`gh`
+      ENOENT from Node's `execFileSync` despite working fine typed
+      directly, the sql.js many-persist()-cycles reliability edge, and a
+      Windows folder-move "item is in use" caused by a lingering process/
+      browser tab), each with the actual fix, not a hypothetical one.
 - [ ] Keep `docs/DESIGN.md` as the living source of truth, updated as
       implementation reveals design gaps (already happened twice during
       planning — will keep happening)

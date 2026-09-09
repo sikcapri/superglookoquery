@@ -206,6 +206,41 @@ const GATED_MODULES = [
   absent → genuinely doesn't register, not an error" — see
   `test/server.test.js` for the pattern.
 
+## Troubleshooting (development)
+
+Real problems hit while building this project, not hypothetical ones —
+worth checking here before assuming something's broken:
+
+- **`git`/`gh` commands fail with `ENOENT` when called from Node
+  (`execFileSync`/`spawnSync`), even though they work fine typed directly
+  into the same terminal (Windows).** A fresh shell process doesn't always
+  inherit a PATH update from a recent install (e.g. `gh` via `winget`) the
+  way an already-open terminal does. Bridge it explicitly in the *same*
+  invocation that runs the Node command:
+  ```powershell
+  # PowerShell
+  $env:PATH = "C:\Program Files\GitHub CLI;C:\Program Files\Git\cmd;" + $env:PATH
+  node your-script.js
+  ```
+  A separate prior command setting `$env:PATH` doesn't help — every new
+  process re-inherits from its own parent, not from a sibling command that
+  ran a moment earlier.
+- **Corrupted/inconsistent archive after many rapid ingest calls in one
+  long-lived process.** A known, narrow sql.js/WASM reliability edge —
+  many `persist()` cycles (each doing a full `rawDb.export()`) in quick
+  succession within one process can intermittently corrupt the archive.
+  Real syncs never approach the call frequency that triggers it (see
+  `scripts/generate-sample-data.mjs`'s header comment for the full account
+  and how it was root-caused), but if you're writing a script that calls
+  an ingest function many times in a loop, batch once per logical unit
+  (e.g. once per category) rather than once per iteration.
+- **Can't rename/move a project folder on Windows — "item is in use."**
+  Check for a lingering `node` process (`Get-CimInstance Win32_Process
+  -Filter "Name = 'node.exe'"` in PowerShell to see command lines) or an
+  open browser tab/preview still pointing at a file inside that folder —
+  either can hold a handle open even after you think the relevant work is
+  done.
+
 ## Pull requests
 
 - Run `npm test` first — it should be green.
