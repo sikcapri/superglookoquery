@@ -547,7 +547,12 @@ generalizing further.)
       permits (doesn't require) adding a second copyright line for the
       fork's own contributions — worth considering before an actual public
       release, but the current file is legally correct as-is either way.
-- [ ] `CODE_OF_CONDUCT.md`
+- [x] `CODE_OF_CONDUCT.md` — adapted from the Contributor Covenant 2.1, with
+      this project's own specific context added rather than left generic:
+      no "one right way" to manage diabetes (matches the device-agnostic
+      architecture's own stance), and an explicit doubled-down line on
+      never publishing real health data/credentials given what this
+      project actually handles.
 - [ ] Issue templates (bug report, schema registry contribution, feature
       request)
 - [ ] PR template — specifically flagging the guardrail sequence for any PR
