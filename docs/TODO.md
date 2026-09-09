@@ -254,7 +254,8 @@ generalizing further.)
       `registerCapabilityGatedModules()` call confirmed the tool actually
       registers. `docs/DESIGN.md`/`docs/PROMOTION.md` updated to correct the
       earlier (wrong) guess that this lived in basal data.
-- [ ] Submit the first real schema-registry entry (this account's own
+- [x] Generate, review, confirm, and write the first real schema-registry
+      entry (this account's own
       CamAPS FX + Ypso pump + Libre 3+ combo) — **no longer data-blocked**:
       a real sync now populates the archive under SCHEMA_VERSION 9, and
       `node src/submit-registry-entry.js` would produce a real report for
@@ -296,10 +297,31 @@ generalizing further.)
       documented as a known caveat in `extractDeviceNames()`'s own comment
       and worth being aware of before actually submitting: the registry
       slug this produces may not be the most precise name for the device.
-      The real submission itself (typed confirmation, decision to open a
-      PR) is still the user's own to do, via `get_registry_contribution_report`
-      / `submit_registry_contribution` in a live chat, or the CLI script
-      for local dev.
+      **Written and verified for real, 2026-09-09** — the user reviewed the
+      report (rendered as tables in chat for readability) and typed the
+      exact confirmation phrase; `submit_registry_contribution`'s real
+      logic ran and wrote both entries, hash-verified: `schema-registry/
+      cgms/freestyle-libre-3.json` and `schema-registry/pumps/
+      camdiab-camaps-fx.json`. Along the way, the very first real attempt
+      correctly REFUSED once (`hashReportContent`'s staleness check caught
+      a few minutes of real time passing between showing the report and
+      confirming — the rolling 30-day window ticked forward by 3 CGM
+      readings, nothing else changed; re-confirmed on a freshly-regenerated
+      report and it went through). Real, if minor, UX finding: the
+      staleness check is stricter than practically necessary for a
+      multi-turn chat confirmation, since even benign window drift
+      re-triggers it — not fixed here, just noted.
+      **PR intentionally NOT opened yet** — `gh pr create` failed for a
+      mundane reason (local `main` was 19 commits ahead of `origin/main`,
+      all this session's unpushed work, so GitHub's diff computation got
+      confused), and the user explicitly decided not to push `main` mid-
+      development just to clear that: "we've shifted into a development
+      phase... don't want to push to the fork until we have something
+      theoretically complete." The two entries are safely committed AND
+      pushed to GitHub on branch `schema-registry-contribution-1788928054734`
+      (not on local `main` — `git status` there shows nothing pending,
+      confirmed clean). Opening the actual PR is deferred to its own step
+      near the end of the roadmap — see Phase 8.
 
 ## Phase 3 — Testing
 
@@ -470,6 +492,17 @@ generalizing further.)
 
 ## Phase 8 — Before actually publishing/announcing
 
+- [ ] **Push `main` to `origin` and open the schema-registry PR.** Deliberately
+      deferred here rather than done mid-development (2026-09-09 decision:
+      "we've shifted into a development phase... don't want to push to the
+      fork until we have something theoretically complete"). The entries
+      themselves are already written, hash-verified, and pushed to GitHub
+      on branch `schema-registry-contribution-1788928054734` — nothing left
+      to regenerate. Once `main` is ready to go public: push it, then either
+      re-run `gh pr create --head schema-registry-contribution-1788928054734`
+      directly, or re-run `submit_registry_contribution` fresh (simpler,
+      and self-verifying, but will create a second branch/commit — clean up
+      the old one either way once one PR is open).
 - [ ] Explicit, prominent "not a medical device" disclaimer in the README
       (already in the manifest description; needs to be unmissable in the
       repo's front door too)
