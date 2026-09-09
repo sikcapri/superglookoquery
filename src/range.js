@@ -31,6 +31,7 @@ import {
   deriveBasalStates,
   extractDeviceEvents,
   extractCamapsPumpModeBreakdown,
+  extractDeviceNames,
 } from './analytics.js';
 import {
   ensureDbReady,
@@ -142,6 +143,23 @@ function completeDaysInSpan(fromEpoch, toEpoch) {
 export async function pullAndIngest(startISO, endISO) {
   const raw = await fetchGlookoRange(startISO, endISO);
   const timeline = processUnifiedGlookoData(raw.data1);
+
+  // Backfill a device name onto CGM records specifically — unlike bolus
+  // records, a CGM reading never carries one anywhere in data1 (see
+  // extractDeviceNames's own comment for the full account of why this is
+  // needed and where the name actually comes from: data3.devices, not
+  // anything captureExtra() sweeps from a per-reading object). Done here,
+  // not inside processUnifiedGlookoData, because that function only ever
+  // receives data1 and stays deliberately free of any data3 dependency.
+  const deviceNames = extractDeviceNames(raw.data3);
+  if (deviceNames.cgm) {
+    for (const item of timeline) {
+      if (item.type === 'CGM' && (!item.extra || item.extra.deviceName == null)) {
+        item.extra = { ...(item.extra || {}), deviceName: deviceNames.cgm };
+      }
+    }
+  }
+
   const settings = getActiveSettings(
     raw.data3,
     Date.parse(startISO),

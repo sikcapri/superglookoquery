@@ -271,19 +271,35 @@ generalizing further.)
       discovery, not this account's own live tool.) **Attempted for real,
       not yet completed**: the user ran the CLI flow live and got as far as
       the confirmation prompt, which surfaced a real finding — the CGM
-      entry shows `(unknown device name)` / slug `unknown-cgm`, because
+      entry showed `(unknown device name)` / slug `unknown-cgm`, because
       this account's CGM `extra` data has no `deviceName` field at all
-      (only the pump's does; see the report shown). Not a safety issue,
-      just means the CGM entry would file under a generic slug rather than
-      something identifiable as "Libre 3+" — worth deciding whether to fix
-      before submitting (see if a device name is derivable some other way)
-      or just accept it. Also prompted discovering that the CLI script
-      wasn't actually reachable by a real end user at all, which is now
-      fixed (see the corrected entry above) — the real submission should
-      now happen via `get_registry_contribution_report` /
-      `submit_registry_contribution` in a live chat, or the CLI script for
-      local dev, either way still needing the user's own typed confirmation
-      and their own decision to open a real PR to the public repo.
+      (only the pump's does). Also prompted discovering that the CLI
+      script wasn't actually reachable by a real end user at all, fixed
+      separately (see the corrected "Seamless in-session PR submission"
+      entry above).
+      **CGM device name gap fixed 2026-09-09**: the account's CGM device
+      name turned out to be available after all, just not in `data1`
+      (where every other captured field lives) — `data3.devices` has a
+      `properties.cgmModel` field Glooko never wires into anything else in
+      this project. Added `extractDeviceNames()` (analytics.js) and backfilled
+      it onto CGM records' `extra.deviceName` in `range.js`'s `pullAndIngest`
+      (deliberately not inside `processUnifiedGlookoData`, which only ever
+      sees `data1`, not `data3`). A real re-sync confirmed the fix: the CGM
+      registry entry now reads `deviceName: "FreeStyle Libre 3"`, slug
+      `freestyle-libre-3`, instead of `unknown-cgm`. **Real caveat, found by
+      the user, not by inspection**: this account is actually a Libre
+      **3+**, not a Libre 3 — Glooko's own `cgmModel` field reports "3" for
+      what is physically a "3+". This project reports Glooko's field
+      verbatim rather than guessing at a correction (no way to tell from
+      this data alone whether Glooko's integration just doesn't distinguish
+      the two generations, or whether that's specific to this account) —
+      documented as a known caveat in `extractDeviceNames()`'s own comment
+      and worth being aware of before actually submitting: the registry
+      slug this produces may not be the most precise name for the device.
+      The real submission itself (typed confirmation, decision to open a
+      PR) is still the user's own to do, via `get_registry_contribution_report`
+      / `submit_registry_contribution` in a live chat, or the CLI script
+      for local dev.
 
 ## Phase 3 — Testing
 

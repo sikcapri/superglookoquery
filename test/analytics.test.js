@@ -5,6 +5,7 @@ import {
   buildSplitBolusLog,
   summariseSplitBolusStats,
   extractCamapsPumpModeBreakdown,
+  extractDeviceNames,
 } from '../src/analytics.js';
 
 // Regression coverage for the SCHEMA_VERSION 8 -> 9 bug found 2026-09-09: the
@@ -117,4 +118,52 @@ test('extractCamapsPumpModeBreakdown returns the breakdown when fields are popul
 test('extractCamapsPumpModeBreakdown returns null for a non-CamAPS account (fields genuinely absent)', () => {
   assert.equal(extractCamapsPumpModeBreakdown({ stdDev: 1.2, median: 7.0 }), null);
   assert.equal(extractCamapsPumpModeBreakdown(null), null);
+});
+
+// Regression coverage for the 2026-09-09 fix: CGM readings never carry a
+// device name anywhere in data1 (confirmed against a real account), but
+// data3.devices does have one — this is what backfills it.
+test('extractDeviceNames reads cgmModel/pumpModel from data3.devices, preferring the specific property over generic model/brand', () => {
+  const data3 = {
+    devices: [
+      { type: 'cgm', deviceClassification: 'cgm_device', properties: { cgmModel: 'FreeStyle Libre 3' }, model: 'CamAPS FX', serialNumber: 'should-never-be-read' },
+      { type: 'pump', deviceClassification: 'pump', properties: { pumpModel: 'mylife YpsoPump' }, model: 'CamAPS FX' },
+    ],
+  };
+  const names = extractDeviceNames(data3);
+  assert.equal(names.cgm, 'FreeStyle Libre 3');
+  assert.equal(names.pump, 'mylife YpsoPump');
+});
+
+test('extractDeviceNames falls back to model/displayName when no specific *Model property exists', () => {
+  const data3 = { devices: [{ type: 'cgm', deviceClassification: 'cgm_device', model: 'Dexcom G7' }] };
+  assert.equal(extractDeviceNames(data3).cgm, 'Dexcom G7');
+});
+
+test('extractDeviceNames returns nulls, not an error, when no devices list exists', () => {
+  assert.deepEqual(extractDeviceNames({}), { cgm: null, pump: null });
+  assert.deepEqual(extractDeviceNames(null), { cgm: null, pump: null });
+});
+
+test('processUnifiedGlookoData + range.js-style backfill: a CGM point with no per-reading device field can still end up with extra.deviceName', () => {
+  // This mirrors what pullAndIngest actually does (see range.js) rather than
+  // testing analytics.js in isolation, since the backfill deliberately
+  // lives in range.js, not in processUnifiedGlookoData itself.
+  const raw = {
+    series: {
+      cgmHigh: [], cgmLow: [],
+      cgmNormal: [{ x: 1000, y: 6.5 }],
+      deliveredBolus: [],
+    },
+  };
+  const timeline = processUnifiedGlookoData(raw);
+  assert.equal(timeline[0].extra, null, 'processUnifiedGlookoData itself must not invent a deviceName -- that is range.js\'s job');
+
+  const deviceNames = extractDeviceNames({ devices: [{ type: 'cgm', properties: { cgmModel: 'FreeStyle Libre 3' } }] });
+  for (const item of timeline) {
+    if (item.type === 'CGM' && (!item.extra || item.extra.deviceName == null)) {
+      item.extra = { ...(item.extra || {}), deviceName: deviceNames.cgm };
+    }
+  }
+  assert.equal(timeline[0].extra.deviceName, 'FreeStyle Libre 3');
 });

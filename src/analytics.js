@@ -544,6 +544,47 @@ export function extractCamapsPumpModeBreakdown(stats) {
 }
 
 /**
+ * Best-effort device model names from Glooko's device list (`data3.devices`),
+ * one entry per physical device on the account. Confirmed 2026-09-09: unlike
+ * bolus records (which carry their own `deviceName` in `extra` already), a
+ * CGM reading never carries a device name anywhere in `data1` — the
+ * `cgmDeviceDataBrand` field that would normally hold it is blank for this
+ * account — so discover.js's CGM registry entries came back with no device
+ * name (`slug: unknown-cgm`) even though a name IS available elsewhere in
+ * the same raw response. This is that "elsewhere": range.js's pullAndIngest
+ * uses it to backfill CGM records' `extra.deviceName` (see there for why
+ * this isn't done inside processUnifiedGlookoData itself).
+ *
+ * CAVEAT, confirmed against this account: Glooko's own `cgmModel` value
+ * here read "FreeStyle Libre 3" for an account actually wearing a Libre 3+
+ * — a genuinely different Abbott device generation. This function reports
+ * Glooko's field VERBATIM; it does not and should not try to correct or
+ * disambiguate it, since there's no way to tell from this data alone
+ * whether Glooko's own integration simply doesn't distinguish the two
+ * generations or whether this is specific to this account. Treat the
+ * returned name as "what Glooko calls it," not a verified precise model —
+ * a registry slug built from this may undercount which exact generation is
+ * actually representative of real accounts using it.
+ *
+ * Deliberately reads only model/brand-shaped fields, never `serialNumber` —
+ * a real per-device identifier, not a model name, and out of scope for
+ * anything discovery/registry-adjacent touches.
+ *
+ * Returns { cgm: string|null, pump: string|null }.
+ */
+export function extractDeviceNames(data3) {
+  const devices = data3 && Array.isArray(data3.devices) ? data3.devices : [];
+  const nameFor = (d) =>
+    d.properties?.cgmModel || d.properties?.pumpModel || d.model || d.shortDisplayName || d.displayName || null;
+  const cgmDevice = devices.find((d) => d.deviceClassification === 'cgm_device' || d.type === 'cgm');
+  const pumpDevice = devices.find((d) => d.deviceClassification === 'pump' || d.type === 'pump');
+  return {
+    cgm: cgmDevice ? nameFor(cgmDevice) : null,
+    pump: pumpDevice ? nameFor(pumpDevice) : null,
+  };
+}
+
+/**
  * Computes the full aggregate summary for a window: the glucose-control,
  * insulin-delivery, bolus-architecture, best/worst day and hour figures that
  * formatHeader assembled in the browser. Returned as structured data rather
