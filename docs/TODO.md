@@ -536,9 +536,17 @@ generalizing further.)
 
 ## Phase 5 — Repo hygiene
 
-- [ ] Confirm original MIT copyright notice is intact in `LICENSE`
+- [x] Confirm original MIT copyright notice is intact in `LICENSE`
       (required, not optional — this is a legal term of the license, not a
-      courtesy)
+      courtesy). Verified for real, not assumed: fetched the actual
+      upstream `rilhia/podquery-mcp` LICENSE via the GitHub API and diffed
+      it against this repo's — byte-identical content (only a CRLF/LF
+      line-ending difference, not a real change). "Copyright (c) 2026
+      Richard Hall" is unmodified. Optional, not done here since it's a
+      licensing judgement call for the maintainer, not a code decision: MIT
+      permits (doesn't require) adding a second copyright line for the
+      fork's own contributions — worth considering before an actual public
+      release, but the current file is legally correct as-is either way.
 - [ ] `CODE_OF_CONDUCT.md`
 - [ ] Issue templates (bug report, schema registry contribution, feature
       request)
