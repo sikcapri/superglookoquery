@@ -373,9 +373,24 @@ generalizing further.)
       cross-platform comparison. Verified: the real CLI commands now
       produce output, and `node src/server.js` (the actual Claude
       Desktop/`npm start` launch command) still works unchanged.
-- [ ] Synthetic mock Glooko response fixtures for a few different device
-      shapes (hand-built, not real accounts) to test capability gating
-      without needing real hardware for every combination
+- [x] Synthetic mock Glooko response fixtures for a few different device
+      shapes: `test/fixtures/glooko-responses.mjs` — three hand-built, fully
+      synthetic raw-response shapes, none sampled from any real account.
+      `camapsFxFixture` and `omnipod5Fixture` aren't arbitrary: they're this
+      project's own two confirmed real reference points (its own account,
+      and the original upstream PodQuery's target device), built to
+      disagree on exactly the axes that matter — basal-state/device-event
+      series populated or genuinely empty, CamAPS stats present or absent,
+      and the bolus split fields using the confirmed-real PERCENTAGE shape
+      vs. the rarer RAW-DELIVERY shape found once and left unpromoted (see
+      docs/PROMOTION.md's log). `genericUnknownDeviceFixture` is the
+      opposite of both — nothing device-specific anywhere — to confirm
+      nothing guesses at data that was never present. `test/device-fixtures
+      .test.js`'s 12 tests exercise `deriveBasalStates`, `extractDeviceEvents`,
+      `extractDeviceNames`, `extractCamapsPumpModeBreakdown`, and capability
+      gating against all three, all passing on the first real run (a good
+      sign the fixtures matched already-verified real behaviour rather than
+      needing correction against it).
 - [x] Confirm sql.js's in-memory/full-reserialize behavior isn't degraded by
       the wider schema — **found a real, if narrow, reliability edge while
       building `scripts/generate-sample-data.mjs` (2026-09-09)**: calling an
