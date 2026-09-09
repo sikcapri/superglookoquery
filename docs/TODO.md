@@ -10,6 +10,41 @@ sense to tackle, though phases can overlap.
 
 ---
 
+## Phase 3.5 — Backwards feature audit (added 2026-09-09)
+
+Prompted by nearly missing that `get_chart_html` (the original project's
+"ready-made visual chart" — a whole clinical-report-style chart tool the
+user had forgotten this fork already had, and rediscovered by chance
+re-reading the upstream README) still worked after this session's schema/
+architecture changes. It does — verified end to end against the real
+archive, screenshot-confirmed rendering correctly — but that was checked
+only because it happened to come up in conversation, not systematically.
+Given this session already found two real regressions by hand (the wrong
+bolus field names, the wiped sample database), every ORIGINAL upstream
+tool deserves the same explicit, one-by-one check, not an assumption that
+"additive schema changes can't break anything."
+
+- [x] `get_chart_html` — verified (see above)
+- [ ] `get_diabetes_summary`
+- [ ] `get_trend`
+- [ ] `get_glucose`
+- [ ] `get_chart_series`
+- [ ] `get_enriched_bolus_log`
+- [ ] `get_hourly_trends`
+- [ ] `get_basal_delivery`
+- [ ] `get_daily_insulin`
+- [ ] `get_settings_history`
+- [ ] `get_device_events`
+- [ ] `get_meal_window_analysis`
+- [ ] the `clinical_auditor` prompt (not data-shape-sensitive, but confirm
+      it still loads and reads sensibly against current tool descriptions)
+
+For each: call it for real against the live-synced archive (not just a
+synthetic test), confirm the output is sensible, and add a `test/`
+regression test locking in the specific field names/shapes it depends on
+— exactly the kind of pinning that would have caught the bolus
+split-field bug immediately instead of requiring a live sync to discover.
+
 ## Phase 1 — Core architecture (from DESIGN.md)
 
 - [x] Typed core + `extra` JSON overflow column schema change in `store.js`
