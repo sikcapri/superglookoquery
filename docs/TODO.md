@@ -621,8 +621,15 @@ generalizing further.)
       session's own history is full of) plus a separate, deletable
       schema-registry-specific checklist covering the guardrail sequence
       and the no-`gh` GitHub-issue fallback's manual re-check requirement.
-- [ ] `SECURITY.md` — how to report a vulnerability, with explicit emphasis
-      given this handles both login credentials and health data
+- [x] `SECURITY.md` — private reporting only (GitHub security advisory or
+      direct email, never a public issue), explicit in-scope list naming
+      the specific real concerns this project actually has (credential
+      exposure beyond Glooko itself, real data escaping via the schema
+      registry flow specifically, command/path injection in the `git`/`gh`
+      shell-outs, writes outside the intended directories), and an
+      out-of-scope list so reports aren't wasted on things beyond this
+      project's control (local-code-exec-already-compromised, generic
+      upstream dependency CVEs with no project-specific exploit path).
 - [ ] `.gitignore` audit — make certain `podquery.db`/`superglookoquery.db`,
       `.env`, and any local archive file can never be accidentally committed
 - [ ] GitHub repo metadata: description, topics, About section
