@@ -630,8 +630,16 @@ generalizing further.)
       out-of-scope list so reports aren't wasted on things beyond this
       project's control (local-code-exec-already-compromised, generic
       upstream dependency CVEs with no project-specific exploit path).
-- [ ] `.gitignore` audit — make certain `podquery.db`/`superglookoquery.db`,
-      `.env`, and any local archive file can never be accidentally committed
+- [x] `.gitignore` audit — a REAL gap found, not a clean bill of health:
+      only `.env` and `data/` were actually covered; a stray `podquery.db`
+      or any `.sqlite` file sitting anywhere else (repo root during local
+      dev, a stray `OMNI_DB_PATH` override) was NOT ignored at all —
+      confirmed with `git check-ignore -v` before touching anything, not
+      assumed. Added `*.db`/`*.sqlite`/`*.sqlite3` with an explicit
+      `!examples/podquery.db` exception (the bundled sample database is
+      entirely synthetic and meant to be committed). Re-verified after the
+      fix: stray archive files now correctly ignored, the real sample
+      database still correctly tracked and clean.
 - [ ] GitHub repo metadata: description, topics, About section
 
 ## Phase 6 — CI/CD

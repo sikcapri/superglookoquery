@@ -8,3 +8,14 @@ data/
 # the write and the rename can orphan one (hit for real while regenerating
 # examples/podquery.db during development — see docs/TODO.md).
 *.tmp-*
+# A real local archive must never be committed, wherever it ends up (repo
+# root during local dev, a stray OMNI_DB_PATH override, etc.) — confirmed a
+# real gap 2026-09-10 (a .gitignore audit): only data/ was covered, so a
+# stray podquery.db or .sqlite file sitting anywhere else wasn't ignored at
+# all. The one explicit exception is the bundled sample database, which is
+# entirely synthetic (see scripts/generate-sample-data.mjs) and meant to be
+# committed.
+*.db
+*.sqlite
+*.sqlite3
+!examples/podquery.db
