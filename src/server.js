@@ -337,6 +337,7 @@ server.registerTool(
       '(counts by bolus type); carbs (carbsGrams, carbsPerDay, carbEntryCount); ' +
       'and settings (the time-segmented profiles in force). All timestamps are ' +
       'plain wall clock time (see start/end parameter notes), not UTC.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -401,6 +402,7 @@ server.registerTool(
       'bolusUnits, totalUnits, provisional), and an aggregate (daysWithData, ' +
       'basalUnits, bolusUnits, totalUnits, basalUnitsPerDay, bolusUnitsPerDay, ' +
       'totalUnitsPerDay, basalPercent). All dates are wall-clock (device-local) days.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -487,6 +489,7 @@ server.registerTool(
       'interrupted, recCorrection, recCarbs, recTotal, override, bgInput, ' +
       'bgSource, cgm_val, class, isManual, and a context object of the settings ' +
       'in force).',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -564,6 +567,7 @@ server.registerTool(
       'avgInitialDeliveryPercent — all null/0 for a window with no split ' +
       'boluses, which is a normal result for an automated closed-loop user, not ' +
       'an error), and a boluses array of the split events themselves.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -609,6 +613,7 @@ server.registerTool(
       'Returns: a byHour array of up to 24 rows, each with hour (wall clock, ' +
       '"HH:00"), averageBG, timeInRange, timeLow, timeHigh and the reading ' +
       'count for that hour. Glucose values are in the configured unit.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -655,6 +660,7 @@ server.registerTool(
       'Returns: a settings array, each entry with its effective timestamp, ' +
       'DIA_hours, maxBasalRate, and the targetBg, isf and carbRatio profiles ' +
       '(each a list of {from, value} time segments).',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -712,6 +718,7 @@ server.registerTool(
       'basalDayCount, averageBasalUnitsPerDay, basalPercent, bolusPercent); ' +
       'carbs (carbsGrams, carbsPerDay, carbEntryCount); and coverage ' +
       '(cgmReadingCount, expectedReadingCount, coveragePercent, trustworthy).',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -846,6 +853,7 @@ server.registerTool(
       'Returns: unit, a points array (t, avg, min, max, n per point), an ' +
       'events array of bolus markers for overlay, and xAxis (spanHours, ' +
       'ticks, days) as described above.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -970,6 +978,7 @@ server.registerTool(
       'immediate error), downsample (only present when the plotted points were ' +
       'thinned from the raw CGM readings — see DATA RESOLUTION above), and — ' +
       'only as a fallback — html.',
+    annotations: { readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       start: z
         .string()
@@ -1228,6 +1237,7 @@ server.registerTool(
       'Returns: a summary of minutes and percentage per state ' +
       '(normal/suspend/max/limited) and, unless includeIntervals is false, an ' +
       'intervals array (state, start, end, minutes).',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -1292,6 +1302,7 @@ server.registerTool(
       'Times are plain wall clock time (device-local), not UTC.\n\n' +
       'Returns: podChanges and sensorChanges arrays of wall-clock timestamps, ' +
       'plus a count for each.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -1342,6 +1353,7 @@ server.registerTool(
       'Returns: window, thresholdsUsed (lower, upper, unit), the band requested, ' +
       'count, and a readings array (time, value, velocity, plus band when ' +
       'band="all").',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),
       end: z.string().describe(endDesc),
@@ -1426,6 +1438,7 @@ server.registerTool(
       'Returns: targetEvent (the timestamp you passed), unit, a glucoseTimeline ' +
       'array (time, value) across the window, and an associatedBoluses array of ' +
       'enriched bolus records that fall in the window.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       eventTimestamp: z.string().describe('The concrete ISO 8601 timestamp of the meal/bolus event, in plain wall clock time (device-local) — use the exact wall-clock digits, no UTC conversion. Returned times are likewise wall clock, not UTC.'),
       units: unitsSchema,
@@ -1505,6 +1518,7 @@ server.registerTool(
       'deviceName, slug, discoveredAt, windowDaysActual, lowConfidence, ' +
       'fields), and reportHash (an opaque integrity token for the next call — ' +
       'not meant to be shown to the patient).',
+    annotations: { readOnlyHint: true },
     inputSchema: {},
   },
   async () => {
@@ -1544,6 +1558,7 @@ server.registerTool(
       'If `gh` is not available, or nothing needs submitting, or the PR step ' +
       'fails, files are still written and hash-verified locally — nothing is ' +
       'ever lost, and this is reported clearly rather than silently.',
+    annotations: { readOnlyHint: false, destructiveHint: true },
     inputSchema: {
       confirmationPhrase: z.string().describe(
         'EXACTLY what the patient themselves typed in response to the ' +
@@ -1645,6 +1660,7 @@ const GATED_MODULES = [
             'boostPercent/libertyPercent/attemptingPercent, and perModeDurations ' +
             '(Glooko\'s raw per-mode duration text). Returns breakdown: null (not ' +
             'an error) if Glooko has nothing for this exact window.',
+          annotations: { readOnlyHint: true },
           inputSchema: {
             start: z.string().describe(startDesc),
             end: z.string().describe(endDesc),
