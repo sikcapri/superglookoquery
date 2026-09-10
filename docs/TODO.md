@@ -727,30 +727,52 @@ generalizing further.)
 
 ## Phase 8 — Before actually publishing/announcing
 
-- [ ] **Push `main` to `origin` and open the schema-registry PR.** Deliberately
-      deferred here rather than done mid-development (2026-09-09 decision:
-      "we've shifted into a development phase... don't want to push to the
-      fork until we have something theoretically complete"). The entries
-      themselves are already written, hash-verified, and pushed to GitHub
-      on branch `schema-registry-contribution-1788928054734` — nothing left
-      to regenerate. Once `main` is ready to go public: push it, then either
-      re-run `gh pr create --head schema-registry-contribution-1788928054734`
-      directly, or re-run `submit_registry_contribution` fresh (simpler,
-      and self-verifying, but will create a second branch/commit — clean up
-      the old one either way once one PR is open).
-- [ ] Explicit, prominent "not a medical device" disclaimer in the README
+- [x] **Push `main` to `origin` and open the schema-registry PR.** Done
+      2026-09-10, on explicit request. `main` pushed to `origin/main`
+      (37 commits, `443bfb3..c554582` at that point). The
+      `schema-registry-contribution-1788928054734` branch was re-checked
+      against the new `main` first — still a clean two-file diff
+      (`schema-registry/cgms/freestyle-libre-3.json`,
+      `schema-registry/pumps/camdiab-camaps-fx.json`), no conflicts — then
+      opened as
+      [PR #1](https://github.com/sikcapri/superglookoquery/pull/1).
+- [x] Explicit, prominent "not a medical device" disclaimer in the README
       (already in the manifest description; needs to be unmissable in the
-      repo's front door too)
-- [ ] Decide how to honestly represent device coverage at launch — realistic
+      repo's front door too) — already satisfied, verified by actually
+      reading `README.md`'s current front matter rather than assuming:
+      a `[!IMPORTANT]` GitHub callout sits right under the title (line 14,
+      before either of the two `[!NOTE]` callouts), linking to the full
+      disclaimer section near the bottom of the file. No change needed.
+- [x] Decide how to honestly represent device coverage at launch — realistic
       wording is "built and tested against one CamAPS FX/Ypso pump/Libre 3+
       account; architecture designed to extend to other devices via
       contribution" rather than implying broad device support that doesn't
-      exist yet
-- [ ] Own review pass for anything that could read as medical advice rather
-      than data analysis
+      exist yet — already satisfied: verified by re-reading the whole
+      README, not assumed. The "any pump/CGM combination Glooko supports"
+      line in the tagline is immediately followed by the `[!NOTE]` callouts
+      naming the single real account this has actually been tested against,
+      and the "How discovery and device support work" section spells out
+      "capability, not assumption" — a device-specific tool only appears
+      once an account's own data has shown it, nothing is a blanket claim.
+      No overclaiming language found elsewhere in the file.
+- [x] Own review pass for anything that could read as medical advice rather
+      than data analysis — read `src/prompt.js`'s full persona prompt end to
+      end (not grepped/skimmed) plus every user-facing string in `README.md`.
+      Found no directive language telling the patient to change a dose or
+      therapy; the prompt is explicitly framed as an audit ("Determine if...
+      there is a persistent metabolic drift", "Identify Systemic Mismatches")
+      for the patient to bring to their own clinician, and its own last line
+      is a standing constraint: "You are an analytical aid, not a
+      prescriber. Any observation about pump settings must be flagged as
+      something to review with the patient's own healthcare professional
+      before any change." Also grepped `src/*.js` for
+      recommend/adjust/increase/decrease/titrate-style imperative phrasing
+      aimed at the patient — none found.
 - [ ] Decide whether/where to announce (T1D tech communities, MCP
       directories) — entirely optional, your call, not a technical
-      requirement
+      requirement. Asked directly 2026-09-10: not now — leaving this open,
+      no announcement decision made yet. Revisit whenever it's actually
+      wanted; nothing else on this list depends on it.
 
 ---
 
