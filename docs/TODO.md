@@ -708,8 +708,22 @@ generalizing further.)
       an identical, correctly-pruned bundle. Documented in
       `docs/MANUAL_TEST_PLAN.md`'s packaging step; devDependencies restored
       afterward (`npm install`) and `npm test` re-confirmed 74/74 passing.
-- [ ] Versioning approach (semver) and a `CHANGELOG.md`
-- [ ] GitHub Releases with the packaged bundle attached
+- [x] Versioning approach (semver) and a `CHANGELOG.md` — policy documented
+      in `CONTRIBUTING.md`'s new "Versioning and releases" section
+      (PATCH/MINOR/MAJOR meaning, the pre-1.0 caveat, and the fact that
+      `package.json` and `manifest.json` both carry the version and must be
+      bumped together — nothing enforces that automatically yet). Added
+      `CHANGELOG.md` (Keep a Changelog style) with everything so far under
+      `[Unreleased]`, since nothing has actually been tagged/released.
+- [x] GitHub Releases with the packaged bundle attached —
+      `.github/workflows/release.yml`, triggered by pushing a `v*` tag: a
+      fresh `npm ci --omit=dev` checkout, `mcpb pack` (using the
+      devDependency-free method confirmed above), then
+      `softprops/action-gh-release` attaches the resulting `.mcpb` to a
+      GitHub Release with auto-generated notes. Not itself triggered yet —
+      this builds the mechanism only; cutting an actual first release/tag
+      is a separate decision, downstream of Phase 8's other pre-publish
+      items.
 
 ## Phase 8 — Before actually publishing/announcing
 

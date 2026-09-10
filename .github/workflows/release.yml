@@ -1,0 +1,32 @@
+name: Release
+
+# Triggered by pushing a version tag (e.g. `v0.2.0`) once package.json and
+# manifest.json have both been bumped to match (see CONTRIBUTING.md's
+# "Versioning and releases" section) and CHANGELOG.md has a matching entry.
+#
+# Builds the .mcpb the same devDependency-free way confirmed by hand on
+# 2026-09-10 (see docs/MANUAL_TEST_PLAN.md and docs/TODO.md's Phase 7 entry):
+# a fresh `npm ci --omit=dev` checkout, so eslint and its own dependency
+# tree never end up inside the shipped bundle.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --omit=dev
+      - run: npx --yes @anthropic-ai/mcpb pack . superglookoquery.mcpb
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: superglookoquery.mcpb
+          generate_release_notes: true

@@ -241,6 +241,34 @@ worth checking here before assuming something's broken:
   either can hold a handle open even after you think the relevant work is
   done.
 
+## Versioning and releases
+
+Semantic versioning (`MAJOR.MINOR.PATCH`), once this leaves the pre-1.0
+development phase it's currently in:
+
+- **PATCH** — bug fixes, doc updates, CI/tooling changes with no behaviour
+  change for a running extension.
+- **MINOR** — backwards-compatible additions: a new tool, a new
+  capability-gated module, a new device combination's data surfaced
+  additively.
+- **MAJOR** — anything that changes or removes an existing tool's output
+  shape, or otherwise breaks a config/data format an installed extension
+  already relies on.
+
+While pre-1.0 (`0.x.y`), a MINOR bump can still mean a real breaking change
+— normal semver convention for an unstable initial series — so check
+`CHANGELOG.md` rather than assuming from the version number alone.
+
+**Two files carry the version and must be bumped together**: `package.json`
+and `manifest.json` (the `.mcpb` manifest Claude Desktop reads). They have
+drifted from each other before in projects like this one — nothing enforces
+them matching automatically yet, so double-check both by hand as part of
+any version bump.
+
+Add an entry to [`CHANGELOG.md`](CHANGELOG.md) for anything a user or
+contributor would actually want to know about — not every commit. Keep it
+under `## [Unreleased]` until a release actually cuts that version.
+
 ## Pull requests
 
 - Run `npm test` first — it should be green.

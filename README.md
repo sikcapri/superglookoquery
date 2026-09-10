@@ -17,7 +17,7 @@
 > This is a fork of [Richard Hall's PodQuery](https://github.com/rilhia/podquery-mcp) (MIT licensed). The original was built around one device combo (Omnipod 5 + Glooko); this fork keeps its MCPB packaging and clinical-analysis core but reworks the ingestion layer to be **device-agnostic**: instead of reading a small fixed set of fields assumed in advance, it discovers what your own account's data actually contains and adapts its available tools to that. See [How discovery and device support work](#how-discovery-and-device-support-work) below.
 
 > [!NOTE]
-> **Early stage (v0.1.0).** This fork is under active development, tested end to end against one real account (CamAPS FX pump + Ypso Pump + Libre 3+ CGM). The architecture is built to extend to other pump/CGM combinations via real contributed data, not by guessing at fields nobody has verified — see the section below for exactly how that works and what "device support" honestly means right now.
+> **Early stage (v0.1.0).** This fork is under active development, tested end to end against one real account (Ypsomed YpsoPump running CamAPS FX as the AID app + Libre 3+ CGM). The architecture is built to extend to other pump/CGM combinations via real contributed data, not by guessing at fields nobody has verified — see the section below for exactly how that works and what "device support" honestly means right now.
 
 ---
 
