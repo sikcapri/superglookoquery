@@ -18,8 +18,17 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-const APP_FOLDER_NAME = 'PodQuery';
-const DB_FILE_NAME = 'podquery.db';
+const APP_FOLDER_NAME = 'SuperGlookoQuery';
+const DB_FILE_NAME = 'superglookoquery.db';
+
+// Pre-rebrand installs (this project's own early builds, and the original
+// upstream PodQuery this was forked from) used these names instead. Detected
+// and preferred over the new names below ONLY when the new ones don't
+// already exist, so an existing archive is picked up automatically on
+// upgrade rather than silently starting a second, empty one — no manual
+// migration step, no re-downloading history from Glooko.
+const LEGACY_APP_FOLDER_NAME = 'PodQuery';
+const LEGACY_DB_FILE_NAME = 'podquery.db';
 
 /** This module's own directory, independent of the process's cwd. */
 function moduleDir() {
@@ -47,13 +56,22 @@ export function resolveDataDir() {
   const parent =
     (process.env.OMNI_DATA_DIR && process.env.OMNI_DATA_DIR.trim()) ||
     path.join(os.homedir(), 'Documents');
-  return path.join(parent, APP_FOLDER_NAME);
+  const preferred = path.join(parent, APP_FOLDER_NAME);
+  if (fs.existsSync(preferred)) return preferred;
+  const legacy = path.join(parent, LEGACY_APP_FOLDER_NAME);
+  if (fs.existsSync(legacy)) return legacy;
+  return preferred;
 }
 
 /** The full path to the SQLite archive file. */
 export function resolveDbPath() {
   if (process.env.OMNI_DB_PATH) return process.env.OMNI_DB_PATH;
-  return path.join(resolveDataDir(), DB_FILE_NAME);
+  const dir = resolveDataDir();
+  const preferred = path.join(dir, DB_FILE_NAME);
+  if (fs.existsSync(preferred)) return preferred;
+  const legacy = path.join(dir, LEGACY_DB_FILE_NAME);
+  if (fs.existsSync(legacy)) return legacy;
+  return preferred;
 }
 
 /** The bundled example database shipped inside the extension, if present. */

@@ -1,4 +1,4 @@
-# SuperGlookoPodQuery — High-Level Design
+# SuperGlookoQuery — High-Level Design
 
 **Date:** 2026-09-09
 **Status:** Reviewed, both must-fix items addressed. Ready for implementation.

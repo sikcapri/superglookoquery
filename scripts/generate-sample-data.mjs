@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * generate-sample-data.mjs — builds examples/podquery.db, the archive the
+ * generate-sample-data.mjs — builds examples/superglookoquery.db, the archive the
  * MCPB bundles so a brand-new install with no Glooko login still has
  * something real to explore (see paths.js's seedExampleDbIfEmpty()).
  *
@@ -27,7 +27,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const OUT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'examples', 'podquery.db');
+const OUT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'examples', 'superglookoquery.db');
 
 // Fresh start every time this is regenerated — never merge with whatever
 // was there before.

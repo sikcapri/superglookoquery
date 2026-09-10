@@ -117,8 +117,8 @@ In a fresh Claude Desktop conversation with the extension enabled, ask:
    email/password, set "Glooko account's glucose unit" to match the real
    account.
 2. Per the README's "Switching from the Sample Data to Your Own": delete
-   the existing `PodQuery` subfolder under the configured Data folder
-   first, so sample data and real data are never mixed.
+   the existing `SuperGlookoQuery` subfolder under the configured Data
+   folder first, so sample data and real data are never mixed.
 3. Ask a question. **Check:** the first response takes noticeably longer
    (a real cold-start sync is happening) but does complete — it should not
    hang indefinitely or time out the tool call. `console.error` output

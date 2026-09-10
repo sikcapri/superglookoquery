@@ -7,7 +7,7 @@ data/
 .DS_Store
 # store.js's persist() writes here before an atomic rename; a crash between
 # the write and the rename can orphan one (hit for real while regenerating
-# examples/podquery.db during development — see docs/TODO.md).
+# examples/superglookoquery.db during development — see docs/TODO.md).
 *.tmp-*
 # A real local archive must never be committed, wherever it ends up (repo
 # root during local dev, a stray OMNI_DB_PATH override, etc.) — confirmed a
@@ -19,4 +19,4 @@ data/
 *.db
 *.sqlite
 *.sqlite3
-!examples/podquery.db
+!examples/superglookoquery.db

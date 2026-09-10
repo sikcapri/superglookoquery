@@ -151,7 +151,7 @@ Claude Desktop builds the settings form for this extension automatically; there'
 | **Display unit** | How you want to see glucose: `mmol` or `mgdl`. Defaults to `mmol`, independent of the Glooko account unit above, so a US account on `mgdl` can still be viewed entirely in `mmol` if you prefer. |
 | **Low (hypo) boundary** / **High (hyper) boundary** | Your target range, in whatever display unit you picked. Defaults to `3.9` / `10.0`, both mmol/L values. Every tool falls back to these unless you or Claude asks about a different one-off threshold. |
 | **History to load on first run** | Only used once a Glooko login is set (ignored in sample-data mode). Defaults to 3 months back. Set it to however far back you actually have device data, or however far you want visibility into; that's how far the first sync reaches. |
-| **Data folder** | Where the local archive lives. Defaults to your Documents folder, with a small `PodQuery` subfolder created inside it automatically (a naming leftover from the fork, not a bug; this is genuinely where your data lives). Survives extension updates and stays entirely on your machine. |
+| **Data folder** | Where the local archive lives. Defaults to your Documents folder, with a small `SuperGlookoQuery` subfolder created inside it automatically. Survives extension updates and stays entirely on your machine. If you (or the original PodQuery) already have a `PodQuery` subfolder there from an older install, it's picked up automatically, no manual migration needed. |
 
 > [!WARNING]
 > **Switching Display unit to `mgdl`? Update the Low/High boundaries too.** They default to `3.9` / `10.0`, both mmol/L values, and don't auto-convert when you change units. The rough mg/dL equivalent is `70` / `180`, but use whatever your own care team actually set for you.
@@ -187,7 +187,7 @@ Started on the sample data and ready to connect a real account?
 
 1. Open **Settings → Extensions → SuperGlookoQuery**.
 2. Fill in your **Glooko email** and **Glooko password**, and set the rest to match your own setup (see [Configuring it](#configuring-it)).
-3. Clear the existing database first, so sample data doesn't mix with yours: open the **Data folder** you've configured (your Documents folder by default) and delete the `PodQuery` subfolder inside it.
+3. Clear the existing database first, so sample data doesn't mix with yours: open the **Data folder** you've configured (your Documents folder by default) and delete the `SuperGlookoQuery` subfolder inside it (or the `PodQuery` one, if that's the one still in use from an older install).
 4. Ask a question. A fresh archive downloads your own history on that first call.
 
 ---

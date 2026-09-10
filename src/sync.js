@@ -279,7 +279,7 @@ function continueInBackground(remaining, consecutiveEmpty, onProgress, label) {
       recordOldestSynced(reachedEpoch);
     })
     .catch((err) => {
-      console.error(`[podquery] background ${label} failed: ${err.message}`);
+      console.error(`[superglookoquery] background ${label} failed: ${err.message}`);
     });
 }
 

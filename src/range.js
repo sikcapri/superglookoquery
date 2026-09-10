@@ -176,15 +176,15 @@ export async function pullAndIngest(startISO, endISO) {
       ? Object.keys(raw.data1.series.dailyInsulinTotals).length
       : 'ABSENT';
   console.error(
-    `[podquery] pull ${startISO.split('T')[0]}..${endISO.split('T')[0]}: ` +
+    `[superglookoquery] pull ${startISO.split('T')[0]}..${endISO.split('T')[0]}: ` +
       `dailyInsulinTotals keys=${hasBlock}, parsed=${dailyInsulin.length} days`
   );
   if (dailyInsulin.length) {
     const todayUtc = new Date().toISOString().split('T')[0];
     ingestDailyInsulin(dailyInsulin, todayUtc);
-    console.error(`[podquery] ingested ${dailyInsulin.length} daily-insulin rows`);
+    console.error(`[superglookoquery] ingested ${dailyInsulin.length} daily-insulin rows`);
   } else {
-    console.error('[podquery] NO daily-insulin rows to ingest (block absent or empty)');
+    console.error('[superglookoquery] NO daily-insulin rows to ingest (block absent or empty)');
   }
 
   // Basal delivery states (normal/suspend/max/limited), derived from the bar
@@ -290,7 +290,7 @@ async function ensureCoverage(startISO, endISO) {
   // archive without this (or any single) question having to wait for it.
   // Owned by the sync module (locked).
   if (coverageEpoch === null) {
-    await runColdStart((m) => console.error(`[podquery] ${m}`), reqStartEpoch);
+    await runColdStart((m) => console.error(`[superglookoquery] ${m}`), reqStartEpoch);
     return;
   }
 
@@ -323,7 +323,7 @@ async function ensureCoverage(startISO, endISO) {
   // asking about the same old period twice is free the second time, every
   // time, with no surprise network activity. See
   // sync.js's ensureConfiguredFloorSynced for the full rationale.
-  await ensureConfiguredFloorSynced((m) => console.error(`[podquery] ${m}`));
+  await ensureConfiguredFloorSynced((m) => console.error(`[superglookoquery] ${m}`));
 }
 
 /**

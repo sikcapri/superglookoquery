@@ -405,7 +405,7 @@ export function initDb(dbPath = resolveDbPath()) {
   try {
     const bytes = fs.readFileSync(dbFilePath);
     openArchive(bytes);
-    console.error(`[podquery] Archive read failed once but succeeded on retry (likely a sibling process was mid-write).`);
+    console.error(`[superglookoquery] Archive read failed once but succeeded on retry (likely a sibling process was mid-write).`);
     return db;
   } catch (err) {
     rawDb = null;
@@ -417,12 +417,12 @@ export function initDb(dbPath = resolveDbPath()) {
     try {
       fs.renameSync(dbFilePath, quarantinePath);
       console.error(
-        `[podquery] Archive at ${dbFilePath} could not be opened (${err.message}). ` +
+        `[superglookoquery] Archive at ${dbFilePath} could not be opened (${err.message}). ` +
           `Moved it aside to ${quarantinePath} and starting a fresh archive.`
       );
     } catch (renameErr) {
       console.error(
-        `[podquery] Archive at ${dbFilePath} could not be opened (${err.message}), ` +
+        `[superglookoquery] Archive at ${dbFilePath} could not be opened (${err.message}), ` +
           `and could not be quarantined either (${renameErr.message}). Starting a fresh in-memory archive; it will not overwrite the file on disk until the next successful write.`
       );
     }
