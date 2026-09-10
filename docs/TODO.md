@@ -640,7 +640,14 @@ generalizing further.)
       entirely synthetic and meant to be committed). Re-verified after the
       fix: stray archive files now correctly ignored, the real sample
       database still correctly tracked and clean.
-- [ ] GitHub repo metadata: description, topics, About section
+- [x] GitHub repo metadata — confirmed with the user before touching the
+      live public repo (a visible, public-facing change, not something to
+      apply unasked): description matching `manifest.json`'s own wording,
+      and 11 topics (`mcp`, `model-context-protocol`, `claude`,
+      `claude-desktop`, `mcpb`, `diabetes`, `type-1-diabetes`, `glooko`,
+      `insulin-pump`, `cgm`, `health`) applied via `gh repo edit` and
+      verified live on `sikcapri/superglookoquery`. No homepage URL set —
+      nothing external to point to yet.
 
 ## Phase 6 — CI/CD
 
