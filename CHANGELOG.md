@@ -10,6 +10,22 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-11
+
+### Added
+- `activate_clinical_auditor_persona` tool: a low-friction way to load the
+  clinical auditor persona by just asking for it in plain language, since
+  Claude Desktop has no menu for picking an MCP-provided prompt (confirmed
+  independently; a real client limitation, not something broken here). The
+  `clinical_auditor` MCP prompt is still registered too, for clients that
+  do support a prompt picker.
+
+### Fixed
+- `{{CURRENT_DATE}}` in the persona text was documented as "substituted at
+  request time" since it was first written, but no caller ever actually did
+  the substitution — every consumer sent the literal placeholder. Both the
+  new tool and the MCP prompt now correctly fill in today's date.
+
 ## [0.1.2] - 2026-09-11
 
 ### Changed
