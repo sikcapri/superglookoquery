@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+data
+*.mcpb
+*.db
+*.sqlite
+*.sqlite3
+!examples/podquery.db
