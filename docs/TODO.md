@@ -605,8 +605,15 @@ generalizing further.)
       architecture's own stance), and an explicit doubled-down line on
       never publishing real health data/credentials given what this
       project actually handles.
-- [ ] Issue templates (bug report, schema registry contribution, feature
-      request)
+- [x] Issue templates: `.github/ISSUE_TEMPLATE/bug_report.md`,
+      `feature_request.md`, and `schema_registry_contribution.md` (the
+      documented no-`gh` fallback path from `docs/DESIGN.md`'s "No GitHub
+      account fallback" note — includes the same typed-confirmation
+      language as the real submission flow, and an explicit note that this
+      path skips the automated independent privacy scan, so a maintainer
+      re-runs it by hand on whatever's pasted before anything is added to
+      the registry), plus a `config.yml` pointing a blank issue at
+      `CONTRIBUTING.md` rather than leaving it with no guidance at all.
 - [ ] PR template — specifically flagging the guardrail sequence for any PR
       touching `schema-registry/`
 - [ ] `SECURITY.md` — how to report a vulnerability, with explicit emphasis
