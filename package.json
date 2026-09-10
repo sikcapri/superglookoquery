@@ -1,6 +1,6 @@
 {
   "name": "superglookoquery",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server exposing Glooko diabetes device data (any pump/CGM combination) for clinical audit, with device-agnostic capability discovery. Forked from podquery-mcp.",
   "type": "module",
   "scripts": {

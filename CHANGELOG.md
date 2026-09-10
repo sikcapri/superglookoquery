@@ -10,6 +10,16 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-11
+
+### Added
+- `readOnlyHint`/`destructiveHint` MCP tool annotations on every registered
+  tool, flagged independently by an MCP directory's quality review and by
+  Anthropic's Connectors Directory submission requirements.
+- `glama.json` and a minimal `Dockerfile` for MCP directory listing/verification
+  purposes (not used to run the extension for real users, still Claude
+  Desktop / `.mcpb` only).
+
 ## [0.1.0] - 2026-09-10
 
 First tagged release.
