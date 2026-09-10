@@ -4,12 +4,15 @@ All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/), and versioning
 follows the policy in `CONTRIBUTING.md` once this leaves pre-1.0.
 
-Still in active pre-1.0 development — nothing has been tagged or released
-yet, so everything so far sits under `[Unreleased]`. See `docs/TODO.md` for
-the full, detailed roadmap and status; this file is the user/contributor-
-facing summary, not a substitute for it.
+Still in active pre-1.0 development. See `docs/TODO.md` for the full,
+detailed roadmap and status; this file is the user/contributor-facing
+summary, not a substitute for it.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-10
+
+First tagged release.
 
 ### Added
 - Forked from Richard Hall's [podquery-mcp](https://github.com/rilhia/podquery-mcp)
@@ -29,6 +32,9 @@ facing summary, not a substitute for it.
 - A lenient, format-versioned schema (`schema-registry/entry.schema.json`,
   `REGISTRY_ENTRY_FORMAT_VERSION`) so older and newer contributor clients
   can submit entries without either breaking the other.
+- Two real device entries in the schema registry: `freestyle-libre-3`
+  (CGM) and `camdiab-camaps-fx` (pump), contributed via the guardrail
+  sequence from the account this project was built and tested against.
 - New analytical tools beyond the original PodQuery set: bolus split
   analysis, device event history, basal delivery state summaries, and
   more (see `README.md`'s tool list).
