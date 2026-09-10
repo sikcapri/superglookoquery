@@ -10,7 +10,21 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-11
+
+### Changed
+- Replaced `images/icon.png`, the original PodQuery "PQ" badge, with a new
+  SuperGlookoQuery icon (shield + cape motif, "SGQ" monogram). Source SVG
+  kept at `images/icon-source.svg` for future edits.
+
 ## [0.1.1] - 2026-09-11
+
+### Changed
+- Stopped naming the data folder, archive file, and internal log-line
+  prefixes after PodQuery (`src/paths.js`, `src/range.js`, `src/store.js`,
+  `src/sync.js`): now `SuperGlookoQuery`/`superglookoquery.db`/
+  `[superglookoquery]`. Existing `PodQuery`-named installs are detected
+  and used automatically, no manual migration needed.
 
 ### Added
 - `readOnlyHint`/`destructiveHint` MCP tool annotations on every registered

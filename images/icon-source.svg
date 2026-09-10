@@ -1,0 +1,62 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b2a4a"/>
+      <stop offset="100%" stop-color="#0d1730"/>
+    </linearGradient>
+    <linearGradient id="cape" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e0393e"/>
+      <stop offset="100%" stop-color="#a91e22"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#26407a"/>
+      <stop offset="100%" stop-color="#15204c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- cape, angular panels with a straight bottom hem -->
+  <path d="M 246 140
+           L 58 316
+           L 154 336
+           L 246 180
+           Z"
+        fill="url(#cape)"/>
+  <path d="M 266 140
+           L 454 316
+           L 358 336
+           L 266 180
+           Z"
+        fill="url(#cape)"/>
+
+  <!-- shield emblem -->
+  <path d="M256 96
+           L 372 132
+           L 372 268
+           C 372 356, 316 404, 256 432
+           C 196 404, 140 356, 140 268
+           L 140 132
+           Z"
+        fill="url(#shield)"
+        stroke="#f0b429"
+        stroke-width="10"/>
+
+  <!-- inner highlight edge -->
+  <path d="M256 116
+           L 354 148
+           L 354 266
+           C 354 344, 306 386, 256 411
+           C 206 386, 158 344, 158 266
+           L 158 148
+           Z"
+        fill="none"
+        stroke="#3a5aa0"
+        stroke-width="4"
+        opacity="0.6"/>
+
+  <!-- SGQ monogram -->
+  <text x="256" y="292" font-family="Arial, Helvetica, sans-serif" font-weight="900"
+        font-size="98" fill="#f5f7fb" text-anchor="middle" letter-spacing="-1">SGQ</text>
+</svg>
