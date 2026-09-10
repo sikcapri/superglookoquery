@@ -693,8 +693,21 @@ generalizing further.)
 
 ## Phase 7 — Packaging & release process
 
-- [ ] Confirm/adapt the `.mcpb` build/packaging step for Claude Desktop
-      distribution
+- [x] Confirm/adapt the `.mcpb` build/packaging step for Claude Desktop
+      distribution — actually ran `npx @anthropic-ai/mcpb pack` for real
+      (2026-09-10), not just read the docs, and it surfaced a genuine bug in
+      the previously-documented process: `mcpb pack` bundles whatever is
+      physically present in `node_modules`, with no awareness of
+      `package.json`'s `dependencies` vs `devDependencies` split. Packing
+      straight from a normal dev checkout (which now has `eslint` installed
+      for Phase 6's lint step) pulled `eslint`'s entire dependency tree into
+      the bundle too — 7.5MB/3151 files vs. 5.4MB/2255 files after excluding
+      devDependencies, confirmed by direct comparison. Verified the fix two
+      ways: `npm prune --omit=dev` in the existing tree, and (the one a real
+      CI release job would use) a fresh `npm ci --omit=dev` — both produced
+      an identical, correctly-pruned bundle. Documented in
+      `docs/MANUAL_TEST_PLAN.md`'s packaging step; devDependencies restored
+      afterward (`npm install`) and `npm test` re-confirmed 74/74 passing.
 - [ ] Versioning approach (semver) and a `CHANGELOG.md`
 - [ ] GitHub Releases with the packaged bundle attached
 

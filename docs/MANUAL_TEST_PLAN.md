@@ -177,12 +177,28 @@ the whole process or silently discard the corrupt file with no trace.
 ```bash
 # Bash
 npm install -g @anthropic-ai/mcpb   # once per machine
+npm prune --omit=dev                # drop eslint et al. from node_modules first
 mcpb pack
+npm install                         # restore devDependencies for local dev
 ```
 
 **Check:** produces a `.mcpb` file with no errors. Then install *that*
 file (not a previously-built one) in step 4 above, so packaging changes
 are actually covered by the rest of this plan, not just assumed compatible.
+
+**Why the `npm prune` step:** confirmed by actually running `mcpb pack`
+against a normal dev checkout (2026-09-10) — `mcpb` bundles whatever is
+physically present in `node_modules`, with no awareness of
+`package.json`'s `dependencies`/`devDependencies` split. A developer's own
+checkout has `eslint` (and its own dependency tree, including transitive
+packages like `qified`) installed for local linting, and packing straight
+from that tree pulled all of it into the `.mcpb` too — verified by
+comparing a pack before pruning (7.5MB / 3151 files) against one after
+(5.4MB / 2255 files) on an otherwise-identical tree. `.mcpbignore` alone
+doesn't cover this — it excludes specific known paths, not "whatever the
+current devDependency set happens to be." A CI release step should do
+this in a fresh `npm ci --omit=dev` checkout rather than a prune/reinstall
+dance, since it never has devDependencies installed in the first place.
 
 ---
 
