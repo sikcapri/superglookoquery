@@ -63,6 +63,16 @@ const KNOWN_SAFE_TYPES = new Set(['number', 'boolean', 'date', 'string', 'nested
 export function scanForLeakage(entry) {
   const problems = [];
 
+  // formatVersion is optional (absent = written before 2026-09-10, not
+  // invalid — see entry.schema.json's own $comment) but if present must be
+  // a small positive integer, not something a real value could plausibly
+  // collide with.
+  if (entry.formatVersion !== undefined) {
+    if (!Number.isInteger(entry.formatVersion) || entry.formatVersion < 1 || entry.formatVersion > 1000) {
+      problems.push(`formatVersion ${JSON.stringify(entry.formatVersion)} is not a plausible small positive integer`);
+    }
+  }
+
   if (entry.deviceName !== null && typeof entry.deviceName !== 'string') {
     problems.push(`deviceName has unexpected type ${typeof entry.deviceName}`);
   }

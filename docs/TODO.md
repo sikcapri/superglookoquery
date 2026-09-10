@@ -528,6 +528,32 @@ generalizing further.)
       corrected-away-from `initialDelivery` field name and was missing
       `populatedCount`, and it claimed `CONTRIBUTING.md` didn't exist yet
       (it now does, written just before this).
+      **Format-version compatibility added 2026-09-10**, prompted by being
+      asked directly whether an older or newer contributor client's
+      submission file format could break something — a genuinely good
+      question the schema as first written did NOT actually answer well:
+      it had `additionalProperties: false` everywhere and marked every
+      current field `required`, meaning a future file with one new field,
+      or an older file missing one, would both have failed validation.
+      Fixed: `discover.js` now stamps every entry with
+      `REGISTRY_ENTRY_FORMAT_VERSION` (currently `1`, bumped only when the
+      file's own structure changes, never for ordinary data growth); the
+      schema is now `additionalProperties: true` throughout, with
+      `formatVersion` itself OPTIONAL (absent means "written before
+      2026-09-10", not invalid — the two real entries already in this
+      registry predate it), and only genuinely foundational fields
+      required. `scanForLeakage()` gained a matching lightweight
+      `formatVersion` sanity check (small positive integer if present).
+      Backed by a new `test/registry-entry-format-compat.test.js` with a
+      small, reusable (not hardcoded to this one schema) JSON-Schema
+      validator, proving — not just asserting in a comment — that (a) a
+      pre-versioning real entry shape still validates cleanly, (b) a
+      hypothetical future entry with new top-level and per-field
+      properties also validates cleanly, (c) a genuinely broken entry
+      still correctly fails, and (d) the leniency does NOT extend to
+      `syntheticExample`'s privacy-critical fixed allowlist — a real
+      smuggled-looking value there still correctly fails regardless of how
+      lenient the structural schema became. 74/74 tests pass.
 - [x] Setup/installation guide — checked first whether this was already
       covered before writing anything new (it mostly was): README.md's
       "Installing the Extension" / "Configuring Your Settings" / "Trying it

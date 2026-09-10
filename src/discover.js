@@ -28,6 +28,19 @@ const MIN_WINDOW_DAYS = 30;
 const MIN_POPULATED_COUNT = 5;
 const MIN_POPULATED_RATE = 0.01; // 1%
 
+// Bump ONLY when the registry entry file's own STRUCTURE changes (a field
+// renamed/removed/repurposed, or a new field a consumer can't safely treat
+// as optional) — never for ordinary growth in the DATA a report describes
+// (more fields discovered, more devices, etc.), which needs no version bump
+// at all. See schema-registry/entry.schema.json (kept lenient on purpose:
+// unknown fields don't fail validation, and only truly foundational fields
+// are required) and CONTRIBUTING.md/docs/TODO.md for the fuller account of
+// why this exists — added 2026-09-10, before the registry had accumulated
+// entries from multiple contributor client versions, specifically so an
+// older or newer client's file never breaks either the schema or a future
+// consumer of these files.
+export const REGISTRY_ENTRY_FORMAT_VERSION = 1;
+
 // Maps this fork's internal record-type categories onto Glooko's own six
 // category names (taken from developers.glooko.com's own nav — see
 // DESIGN.md) — used only for report labelling, not a live mapping.
@@ -200,6 +213,7 @@ export async function buildComponentReports(dbPath = resolveDbPath()) {
     const deviceName = findDeviceName(records);
     const slug = deviceName ? slugify(deviceName) : `unknown-${category}`;
     entries.push({
+      formatVersion: REGISTRY_ENTRY_FORMAT_VERSION,
       component,
       deviceName: deviceName || null,
       slug,

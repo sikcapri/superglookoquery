@@ -3,10 +3,16 @@
   "$id": "https://github.com/sikcapri/superglookoquery/schema-registry/entry.schema.json",
   "title": "SuperGlookoQuery schema registry entry",
   "description": "One device component's discovered fields, produced verbatim by src/submit-registry-entry.js's runChatDrivenSubmission()/main() — never hand-edited. See schema-registry/README.md and docs/DESIGN.md sections 2b/3 for the full design, and docs/PROMOTION.md for what happens to a field from here.",
+  "$comment": "COMPATIBILITY POLICY (added 2026-09-10, prompted by asking what happens when an older or newer client contributes): this schema is deliberately lenient, not strict, because the registry accumulates files from many different contributor client versions over time, and a schema that rejects anything unfamiliar would break the moment any of them drifts from whatever wrote this file. Concretely: additionalProperties is true everywhere (a newer client's extra field, or an older client's missing optional field, must never fail validation on its own) — the `required` lists below are deliberately the smallest set that makes an entry meaningless without them, not 'everything the current format happens to include'. `formatVersion` is itself OPTIONAL: it did not exist before 2026-09-10, so its absence means 'written before formatVersion existed', not 'invalid'. Bump src/discover.js's REGISTRY_ENTRY_FORMAT_VERSION (and this schema) only when the file's STRUCTURE changes in a way an old consumer genuinely cannot safely ignore — never for ordinary growth in the data a report describes.",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["component", "deviceName", "slug", "discoveredAt", "windowDaysActual", "lowConfidence", "fields"],
+  "additionalProperties": true,
+  "required": ["component", "slug", "fields"],
   "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Which version of THIS FILE'S OWN STRUCTURE wrote it — see discover.js's REGISTRY_ENTRY_FORMAT_VERSION. Absent on any entry written before 2026-09-10 (treat that as equivalent to version 1, minus the field itself, not as invalid). A consumer that only knows how to handle version 1 should treat any HIGHER version as 'proceed with the fields you recognise, ignore the rest' rather than reject the file outright — that's the entire point of additionalProperties being true throughout this schema."
+    },
     "component": {
       "type": "string",
       "enum": ["pump", "cgm"],
@@ -41,8 +47,8 @@
       "description": "Every field that cleared discover.js's reporting threshold (at least 5 populated occurrences, OR at least 1% of records, in the window) — NOT every field this device has ever sent. A field below that bar is still tracked locally (see store.js's field_capability table) but doesn't appear here; see docs/DESIGN.md's discovery design and docs/PROMOTION.md for why the bar exists.",
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["fieldName", "type", "populatedCount", "populatedRate", "syntheticExample"],
+        "additionalProperties": true,
+        "required": ["fieldName", "type", "syntheticExample"],
         "properties": {
           "fieldName": {
             "type": "string",
@@ -57,7 +63,7 @@
           "populatedCount": {
             "type": "integer",
             "minimum": 0,
-            "description": "How many records in the window had this field populated (per store.js's isPopulatedValue: not null/undefined/NaN/empty-string; 0 and false count)."
+            "description": "How many records in the window had this field populated (per store.js's isPopulatedValue: not null/undefined/NaN/empty-string; 0 and false count). Not marked required at the schema level even though every current writer always includes it — see this file's top-level $comment on why 'the current writer always does X' isn't the same thing as 'X is foundational'."
           },
           "populatedRate": {
             "type": "number",
