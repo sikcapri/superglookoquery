@@ -1,0 +1,52 @@
+{
+  "component": "pump",
+  "deviceName": "CamDiab CamAPS FX",
+  "slug": "camdiab-camaps-fx",
+  "discoveredAt": "2026-09-09T04:27:33.639Z",
+  "windowDaysActual": 30,
+  "lowConfidence": false,
+  "fields": [
+    {
+      "fieldName": "highestBolusValue",
+      "type": "number",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": 12.34
+    },
+    {
+      "fieldName": "timestamp",
+      "type": "date",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": "2000-01-01T00:00:00.000Z"
+    },
+    {
+      "fieldName": "type",
+      "type": "string",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": "example text"
+    },
+    {
+      "fieldName": "group",
+      "type": "string",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": "example text"
+    },
+    {
+      "fieldName": "tooltipData",
+      "type": "nested-unsupported",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": null
+    },
+    {
+      "fieldName": "deviceName",
+      "type": "string",
+      "populatedCount": 108,
+      "populatedRate": 1,
+      "syntheticExample": "example text"
+    }
+  ]
+}

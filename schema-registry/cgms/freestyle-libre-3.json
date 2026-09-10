@@ -1,0 +1,45 @@
+{
+  "component": "cgm",
+  "deviceName": "FreeStyle Libre 3",
+  "slug": "freestyle-libre-3",
+  "discoveredAt": "2026-09-09T04:27:33.639Z",
+  "windowDaysActual": 30,
+  "lowConfidence": false,
+  "fields": [
+    {
+      "fieldName": "mealTag",
+      "type": "string",
+      "populatedCount": 27249,
+      "populatedRate": 1,
+      "syntheticExample": "example text"
+    },
+    {
+      "fieldName": "value",
+      "type": "number",
+      "populatedCount": 27249,
+      "populatedRate": 1,
+      "syntheticExample": 12.34
+    },
+    {
+      "fieldName": "timestamp",
+      "type": "date",
+      "populatedCount": 27249,
+      "populatedRate": 1,
+      "syntheticExample": "2000-01-01T00:00:00.000Z"
+    },
+    {
+      "fieldName": "calculated",
+      "type": "boolean",
+      "populatedCount": 27249,
+      "populatedRate": 1,
+      "syntheticExample": true
+    },
+    {
+      "fieldName": "deviceName",
+      "type": "string",
+      "populatedCount": 27249,
+      "populatedRate": 1,
+      "syntheticExample": "example text"
+    }
+  ]
+}
