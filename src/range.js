@@ -40,7 +40,6 @@ import {
   ingestBasalStates,
   ingestDeviceEvents,
   markDays,
-  getLatestCgmEpoch,
   getStreamMaxima,
   getTimeline,
   getSettingsHistory,

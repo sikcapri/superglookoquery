@@ -10,9 +10,6 @@ README.md
 docs/
 .env.example
 
-# GitHub README banner — only images/icon.png is referenced by manifest.json
-images/PQHeader.png
-
 # Per-dependency docs bundled inside node_modules — never require()'d at
 # runtime, just along for the ride from npm. Safe to drop from the package.
 **/*.md

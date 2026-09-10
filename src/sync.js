@@ -31,10 +31,7 @@
  *    first-call cold start / initial top-up.
  */
 
-import {
-  pullAndIngest,
-  startOfTodayEpochSeconds,
-} from './range.js';
+import { pullAndIngest } from './range.js';
 import {
   getStreamMaxima,
   getNewestDataEpoch,

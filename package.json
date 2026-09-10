@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "lint": "eslint ."
   },
   "license": "MIT",
   "dependencies": {
@@ -15,5 +16,9 @@
     "sql.js": "^1.14.2",
     "tough-cookie": "^5.1.2",
     "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0"
   }
 }

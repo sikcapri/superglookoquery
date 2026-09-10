@@ -1,0 +1,24 @@
+name: Schema registry pattern scan
+
+# Server-side defense-in-depth for schema-registry/ contributions: a
+# contributor's local guardrail (scanForLeakage, run by
+# get_registry_contribution_report / submit_registry_contribution before a
+# file is ever written) shouldn't be the only thing standing between a real
+# health-data value and a merged PR. This re-runs that exact same scan,
+# out-of-band, against every entry file the PR actually changes.
+
+on:
+  pull_request:
+    paths:
+      - 'schema-registry/pumps/**'
+      - 'schema-registry/cgms/**'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/ci-scan-registry.mjs

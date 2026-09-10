@@ -651,12 +651,45 @@ generalizing further.)
 
 ## Phase 6 — CI/CD
 
-- [ ] GitHub Actions: run tests on every PR
-- [ ] Lint check on every PR
-- [ ] An automated CI check that mirrors the independent pattern-scanner on
+- [x] GitHub Actions: run tests on every PR — `.github/workflows/test.yml`
+      (`actions/checkout` + `actions/setup-node@v4` on Node 24, `npm ci`, then
+      `npm test`), triggered on every PR and on push to `main`.
+- [x] Lint check on every PR — same workflow, one more step (`npm run lint`).
+      Added `eslint.config.js` (flat config, `@eslint/js` recommended rules
+      plus a small Node-global allowlist) and a `lint` script, both new
+      devDependencies (`eslint`, `@eslint/js` — never shipped in the `.mcpb`
+      bundle, which only packages `dependencies`). Running it for the first
+      time surfaced real dead code, not just style noise, all fixed before
+      wiring it into CI: an entirely unused `performLogin()` wrapper in
+      `src/glooko.js` with a pointless try/catch that just rethrew; a missing
+      `URLSearchParams` global (added to the eslint config, not suppressed);
+      five `throw new Error(...)` sites in `src/glooko.js` that discarded the
+      original caught error rather than attaching it as `{ cause: err }`
+      (`preserve-caught-error`); and two genuinely-dead imports
+      (`getLatestCgmEpoch` in `src/range.js`, `startOfTodayEpochSeconds` in
+      `src/sync.js`) left over from earlier refactors. 74/74 tests still pass
+      after all of it. A handful of `no-unused-vars` warnings remain in
+      `src/analytics.js`/`discover.js`/`submit-registry-entry.js` for
+      parameters that look like placeholders for not-yet-wired behaviour
+      (e.g. `statsScope`) rather than clear dead code — left as warnings
+      (lint exits 0 on warnings alone, so they don't block CI) rather than
+      guessed at and "fixed" without understanding the original intent.
+- [x] An automated CI check that mirrors the independent pattern-scanner on
       any PR touching `schema-registry/`, as server-side defense-in-depth on
       top of the local guardrail (a contributor's local tool being correct
-      shouldn't be the *only* line of defense before something merges)
+      shouldn't be the *only* line of defense before something merges) —
+      `.github/workflows/schema-registry-scan.yml`, path-filtered to
+      `schema-registry/pumps/**`/`schema-registry/cgms/**`, runs
+      `scripts/ci-scan-registry.mjs`. That script imports and calls the exact
+      same `scanForLeakage()` from `src/submit-registry-entry.js` that the
+      client-side guardrail uses (not a reimplementation, so the two can't
+      drift apart silently) against every `*.json` file in those two
+      directories. Verified for real, not just written and assumed correct:
+      ran it against the current (empty, just `.gitkeep`) registry (passes,
+      exit 0), then against a deliberately planted bad entry — a
+      `syntheticExample: 7.42` (a plausible real glucose value, not the fixed
+      `12.34` placeholder) and a missing `deviceName` — confirmed it fails
+      loudly (exit 1) with both problems named, then removed the test file.
 
 ## Phase 7 — Packaging & release process
 

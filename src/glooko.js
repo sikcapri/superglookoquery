@@ -62,20 +62,6 @@ class GlookoError extends Error {
   }
 }
 
-/**
- * Encapsulates the multi-step Glooko authentication flow.
- * Returns { fetch, patientId, urls }. Throws GlookoError on failure.
- */
-async function performLogin(email, password) {
-  let loginPageRes;
-  try {
-    loginPageRes = await fetchWithCookieJar(email, password);
-  } catch (err) {
-    throw err;
-  }
-  return loginPageRes;
-}
-
 async function fetchWithCookieJar(email, password) {
   const jar = new CookieJar();
   const fetch = makeFetchCookie(originalFetch, jar);
@@ -259,7 +245,8 @@ export async function fetchGlookoRange(startDate, endDate) {
 
       if (kind === 'credentials') {
         throw new Error(
-          'Invalid Glooko credentials. Check GLOOKO_EMAIL and GLOOKO_PASSWORD.'
+          'Invalid Glooko credentials. Check GLOOKO_EMAIL and GLOOKO_PASSWORD.',
+          { cause: err }
         );
       }
 
@@ -268,7 +255,8 @@ export async function fetchGlookoRange(startDate, endDate) {
         if (reloginsUsed >= MAX_RELOGIN_ATTEMPTS) {
           throw new Error(
             'Glooko authentication failed after re-login. The session could not ' +
-              'be re-established. Check credentials or try again later.'
+              'be re-established. Check credentials or try again later.',
+            { cause: err }
           );
         }
         session = null;
@@ -294,7 +282,8 @@ export async function fetchGlookoRange(startDate, endDate) {
           continue;
         }
         throw new Error(
-          `Glooko request failed after ${MAX_TRANSIENT_RETRIES} retries: ${err.message}`
+          `Glooko request failed after ${MAX_TRANSIENT_RETRIES} retries: ${err.message}`,
+          { cause: err }
         );
       }
       // Exponential-ish backoff: 1.5s, 3s, 4.5s, 6s, 7.5s
@@ -309,10 +298,11 @@ async function freshLogin(email, password) {
   } catch (err) {
     if (err instanceof GlookoError && err.kind === 'credentials') {
       throw new Error(
-        'Invalid Glooko credentials. Check GLOOKO_EMAIL and GLOOKO_PASSWORD.'
+        'Invalid Glooko credentials. Check GLOOKO_EMAIL and GLOOKO_PASSWORD.',
+        { cause: err }
       );
     }
-    throw new Error(`Glooko login failed: ${err.message}`);
+    throw new Error(`Glooko login failed: ${err.message}`, { cause: err });
   }
 }
 
