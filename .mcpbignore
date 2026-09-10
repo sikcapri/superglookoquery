@@ -9,6 +9,8 @@
 README.md
 docs/
 .env.example
+glama.json
+Dockerfile
 
 # Per-dependency docs bundled inside node_modules — never require()'d at
 # runtime, just along for the ride from npm. Safe to drop from the package.
