@@ -614,8 +614,13 @@ generalizing further.)
       re-runs it by hand on whatever's pasted before anything is added to
       the registry), plus a `config.yml` pointing a blank issue at
       `CONTRIBUTING.md` rather than leaving it with no guidance at all.
-- [ ] PR template — specifically flagging the guardrail sequence for any PR
-      touching `schema-registry/`
+- [x] PR template: `.github/PULL_REQUEST_TEMPLATE.md` — a general
+      checklist (tests, the manual test plan for the specific files known
+      to need it, the "confirm a Glooko field against a real sync" rule,
+      the "say so if a TODO.md 'done' claim turns out wrong" habit this
+      session's own history is full of) plus a separate, deletable
+      schema-registry-specific checklist covering the guardrail sequence
+      and the no-`gh` GitHub-issue fallback's manual re-check requirement.
 - [ ] `SECURITY.md` — how to report a vulnerability, with explicit emphasis
       given this handles both login credentials and health data
 - [ ] `.gitignore` audit — make certain `podquery.db`/`superglookoquery.db`,
