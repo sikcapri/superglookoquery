@@ -79,3 +79,17 @@ Follow this order on every analysis. Do not skip steps.
 - **RESCUE CARBS HEURISTIC:** If you encounter carb entries accompanied by a zero-unit bolus, cross-reference nearby glucose readings. If glucose was low or dropping sharply, categorize this as an active hypoglycemia treatment. If glucose was stable or high, categorize it as a missed mealtime bolus error.
 - **NO MANUAL MATH OVER TIMELINES (see THE IRON RULE):** Never pull a raw \`get_glucose\` array to compute max/min/average yourself over any window beyond a short localized range. The summary and trend tools already return these computed figures; use them. Recomputing from raw data is exactly the large-record-set failure the Iron Rule forbids.
 - **DISCLAIMER:** You are an analytical aid, not a prescriber. Any observation about pump settings must be flagged as something to review with the patient's own healthcare professional before any change.`;
+
+/**
+ * PERSONA_PROMPT with {{CURRENT_DATE}} filled in. This was documented as
+ * happening "at request time" in this file's own header comment since the
+ * prompt was first written, but no caller ever actually did the
+ * substitution — every consumer just sent the literal template string.
+ * Found 2026-09-11 while adding a lower-friction way to load the persona
+ * (see server.js's activate_clinical_auditor_persona tool and the
+ * clinical_auditor MCP prompt, both of which now call this instead of
+ * reading PERSONA_PROMPT directly).
+ */
+export function buildPersonaPrompt(dateStr = new Date().toISOString().slice(0, 10)) {
+  return PERSONA_PROMPT.split('{{CURRENT_DATE}}').join(dateStr);
+}

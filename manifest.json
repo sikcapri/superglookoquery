@@ -4,7 +4,7 @@
   "display_name": "SuperGlookoQuery",
   "version": "0.1.2",
   "description": "Clinical audit of your Glooko diabetes data, directly inside Claude — any pump/CGM combination, not just one device.",
-  "long_description": "SuperGlookoQuery connects your Glooko diabetes history straight into Claude Desktop, for any pump/CGM combination Glooko supports. It downloads your data from Glooko, keeps a local archive on your own machine, and exposes it to Claude as a set of analytical tools (time in range, GMI, trends, an enriched bolus log matched against the pump settings active at the time, basal delivery states, and more) so Claude can pull exactly the aggregate it needs instead of raw data dumps. Device-specific data (e.g. a particular pump's own operating-mode stats) is discovered per-account rather than assumed, so the tool adapts to whatever your own devices actually report instead of being built around one contributor's setup. A built-in 'Clinical auditor persona' prompt turns Claude into a direct, no-nonsense analyst of your control.\n\nYour Glooko username and password stay on your own machine: they are sent straight from this extension to Glooko's servers and are never seen by Anthropic or this extension's author. If you would rather try it first, leave the Glooko fields blank and the extension serves a bundled sample dataset with no account and no network access at all.\n\nThis tool is for understanding your data and asking better questions of your diabetes care team. It is not a medical device and must never be used to decide changes to your therapy.\n\nForked from Richard Hall's podquery-mcp (https://github.com/rilhia/podquery-mcp), MIT licensed.",
+  "long_description": "SuperGlookoQuery connects your Glooko diabetes history straight into Claude Desktop, for any pump/CGM combination Glooko supports. It downloads your data from Glooko, keeps a local archive on your own machine, and exposes it to Claude as a set of analytical tools (time in range, GMI, trends, an enriched bolus log matched against the pump settings active at the time, basal delivery states, and more) so Claude can pull exactly the aggregate it needs instead of raw data dumps. Device-specific data (e.g. a particular pump's own operating-mode stats) is discovered per-account rather than assumed, so the tool adapts to whatever your own devices actually report instead of being built around one contributor's setup. Ask for the built-in 'clinical auditor' persona (e.g. \"use the clinical auditor persona\") and Claude turns into a direct, no-nonsense analyst of your control.\n\nYour Glooko username and password stay on your own machine: they are sent straight from this extension to Glooko's servers and are never seen by Anthropic or this extension's author. If you would rather try it first, leave the Glooko fields blank and the extension serves a bundled sample dataset with no account and no network access at all.\n\nThis tool is for understanding your data and asking better questions of your diabetes care team. It is not a medical device and must never be used to decide changes to your therapy.\n\nForked from Richard Hall's podquery-mcp (https://github.com/rilhia/podquery-mcp), MIT licensed.",
   "author": {
     "name": "Chris",
     "url": "https://github.com/sikcapri"
@@ -94,6 +94,10 @@
     {
       "name": "get_meal_window_analysis",
       "description": "A focused look at one meal or bolus event: 30 minutes before to 3 hours after, with the glucose trace and any boluses in that window."
+    },
+    {
+      "name": "activate_clinical_auditor_persona",
+      "description": "Loads the tough-love clinical auditor persona and operating instructions for the rest of the conversation. Ask for it in plain language (e.g. \"use the clinical auditor persona\")."
     }
   ],
   "user_config": {

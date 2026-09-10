@@ -113,11 +113,16 @@ This handles real medical credentials and real health data, so it's built local-
 <a id="the-clinical-auditor-persona"></a>
 ## The clinical auditor persona
 
-The extension ships a selectable prompt, **"Clinical auditor persona,"** that turns Claude into a direct, no-nonsense reviewer of your own control data.
+Ask for the **"clinical auditor"** persona and Claude turns into a direct, no-nonsense reviewer of your own control data.
 
 Managing type 1 diabetes is hard enough without an assistant that softens every finding to keep things pleasant. This persona doesn't do that. It'll say plainly where your bolus timing looks off, where you're over-correcting, or where basal isn't catching an overnight drift, and it's built to reach for summaries first rather than wading through raw readings when it doesn't need to.
 
 The directness is a style choice, not a claim of medical authority. Everything it says exists to help you understand your own data and walk into your next appointment with better questions, not to tell you what to change. It won't hand you a specific new DIA or carb ratio to try. That decision belongs to you and your healthcare professional, always.
+
+> [!NOTE]
+> **Claude Desktop currently has no menu for picking an MCP-provided prompt**, even though this one is correctly registered and discoverable at the protocol level (confirmed directly against the running server, and independently researched). That's a Claude Desktop limitation, not something broken in this extension, other MCP clients (Claude Code, for one) do support a prompt picker.
+>
+> **You don't need that menu anyway.** Just ask for it in your own words, for example: *"Use the clinical auditor persona for this"*, or *"give it to me straight, do a full audit"*. Claude has a tool built for exactly this (`activate_clinical_auditor_persona`), it calls it itself and adopts the full persona from its next message, no menu, no copy-pasting a wall of text.
 
 ---
 
@@ -171,7 +176,7 @@ Fill in your Glooko email and password, set the account glucose unit to match yo
 
 1. Start a chat in Claude Desktop.
 2. Confirm the **SuperGlookoQuery** extension is enabled for the conversation, in Claude Desktop's tools/connector picker.
-3. Pick **"Clinical auditor persona"** from the prompt menu for the full audit experience, or just ask a question directly; the tools work either way.
+3. For the full audit experience, just ask for it, e.g. *"use the clinical auditor persona"* (see [The clinical auditor persona](#the-clinical-auditor-persona)), or skip that and ask a question directly; the tools work either way.
 4. Ask something. A decent opener:
 
    > *"Tell me about my diabetes data."*
@@ -278,7 +283,13 @@ Most tools take optional `units`, `lower`, and `upper` parameters. Left out, Cla
 | `get_registry_contribution_report` | Step 1: builds the privacy-guardrailed discovery report for your device(s), see [How device support actually works](#how-device-support-actually-works). No real values, only field names, types, and populated-rates. Returns a `reportHash` you'll need for step 2. |
 | `submit_registry_contribution` | Step 2: only runs after you've reviewed step 1 yourself and typed its exact confirmation phrase; Claude can't supply that on your behalf. Runs an independent privacy scan and a content-integrity check, writes to `schema-registry/`, and opens a pull request if the GitHub CLI is installed and authenticated. Refuses harmlessly if the phrase doesn't match, or if the underlying data changed since you reviewed the report. |
 
-There's also one MCP **prompt**: `clinical_auditor` ("Clinical auditor persona" in the Claude UI), see [The clinical auditor persona](#the-clinical-auditor-persona).
+### Persona tools
+
+| Tool | Purpose |
+|---|---|
+| `activate_clinical_auditor_persona` | Loads the tough-love clinical auditor persona and its full operating instructions for the rest of the conversation. Call this yourself by just asking for it in plain language, see [The clinical auditor persona](#the-clinical-auditor-persona). |
+
+There's also an MCP **prompt** with the same content, `clinical_auditor`, for clients that support a prompt picker (Claude Desktop currently doesn't, see above; the tool is the reliable way to reach it there).
 
 ---
 

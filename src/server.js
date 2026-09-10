@@ -74,7 +74,7 @@ import {
   MGDL_PER_MMOL,
 } from './analytics.js';
 import { renderChartHtml } from './chartHtml.js';
-import { PERSONA_PROMPT } from './prompt.js';
+import { buildPersonaPrompt } from './prompt.js';
 import { buildComponentReports } from './discover.js';
 import {
   hashReportContent,
@@ -1582,6 +1582,15 @@ server.registerTool(
 );
 
 // --- persona prompt -------------------------------------------------------
+// Registered both ways deliberately: as an MCP *prompt* (the spec-correct
+// mechanism, and what clients with a prompt picker — e.g. Claude Code — can
+// select from a menu) AND as a *tool* below (activate_clinical_auditor_
+// persona), since Claude Desktop currently has no UI for picking an MCP
+// prompt at all, confirmed directly against a running server plus
+// independent research, 2026-09-11 — see docs/TODO.md. The tool is what
+// makes this reachable with zero user friction in Claude Desktop today: the
+// patient just asks for it in plain language and the model calls the tool
+// itself, no copy-pasting a wall of text, no menu that doesn't exist yet.
 server.registerPrompt(
   'clinical_auditor',
   {
@@ -1594,9 +1603,35 @@ server.registerPrompt(
     messages: [
       {
         role: 'user',
-        content: { type: 'text', text: PERSONA_PROMPT },
+        content: { type: 'text', text: buildPersonaPrompt() },
       },
     ],
+  })
+);
+
+server.registerTool(
+  'activate_clinical_auditor_persona',
+  {
+    title: 'Activate the clinical auditor persona',
+    description:
+      'Call this whenever the patient asks for the "clinical auditor", "tough love", ' +
+      '"endocrinologist", or "full audit" persona/mode, or anything equivalent in their ' +
+      'own words — e.g. "be tougher with me", "give it to me straight", "do a proper ' +
+      'audit of my control". Returns the full persona and operating instructions as ' +
+      'plain text (today\'s date already filled in). Adopt everything it says as your ' +
+      'own operating instructions for the REST of this conversation immediately — do ' +
+      'not summarise it back to the patient, do not ask permission first, and do not ' +
+      'just describe what the persona would say; actually become it starting with your ' +
+      'very next message. This exists because Claude Desktop has no menu for picking ' +
+      'an MCP-provided prompt (a real, confirmed client limitation, not a missing ' +
+      'feature here) — this tool is the low-friction way to reach the exact same thing ' +
+      'from a plain-language request instead of the patient pasting a large block of text ' +
+      'themselves.',
+    annotations: { readOnlyHint: true },
+    inputSchema: {},
+  },
+  async () => ({
+    content: [{ type: 'text', text: buildPersonaPrompt() }],
   })
 );
 
