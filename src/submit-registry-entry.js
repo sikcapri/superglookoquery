@@ -191,6 +191,28 @@ export function ghAvailable() {
  * means trying again or finishing the last step by hand.
  */
 export function openRegistryPullRequest({ repoRoot, filePaths, slugs, confirmedAtIso }) {
+  // Checked before ghAvailable() deliberately: "is this even a git
+  // repository" is the more fundamental precondition. A real, confirmed gap
+  // (2026-09-10): the packaged .mcpb a real end user installs has NO .git
+  // directory at all — mcpb's own default exclusions strip it from the
+  // bundle (see .mcpbignore's own comment) — so for anyone running the
+  // actual distributed extension rather than a git clone, every command
+  // below would otherwise throw a raw, uncaught "fatal: not a git
+  // repository" the first time it ran, not a clean fallback message.
+  try {
+    run('git', ['rev-parse', '--is-inside-work-tree'], { cwd: repoRoot });
+  } catch {
+    return {
+      opened: false,
+      reason:
+        `${repoRoot} is not a git repository — this is expected for the packaged extension ` +
+        '(mcpb strips .git from the bundle) and not something this step can fix on its own. ' +
+        'Files are written and verified locally under schema-registry/ — copy them into a ' +
+        'clone of the repo yourself and open a PR from there, or see the README for the ' +
+        'manual fallback (email the maintainer, or paste the report into a GitHub issue).',
+    };
+  }
+
   if (!ghAvailable()) {
     return {
       opened: false,

@@ -7,6 +7,7 @@ import {
   scanForLeakage,
   hashContent,
   writeAndVerify,
+  openRegistryPullRequest,
 } from '../src/submit-registry-entry.js';
 
 function validEntry(overrides = {}) {
@@ -116,5 +117,27 @@ test('writeAndVerify RESTORES pre-existing legitimate content on a mismatch, rat
 
   assert.equal(fs.existsSync(filePath), true, 'a mismatch must never destroy a pre-existing file');
   assert.equal(fs.readFileSync(filePath, 'utf8'), legitimateContent, 'the original content must be restored byte-for-byte');
+  fs.rmSync(repoRoot, { recursive: true, force: true });
+});
+
+// Regression test for a real gap found 2026-09-10: the packaged .mcpb a
+// real end user installs has no .git directory at all (mcpb strips it from
+// the bundle — see .mcpbignore's own comment), so openRegistryPullRequest
+// must not crash with a raw, uncaught git error when repoRoot isn't a git
+// repository — it must return the same kind of clean, informative fallback
+// result every other precondition failure here does. Deliberately does NOT
+// depend on `gh` being installed/authenticated in the test environment:
+// this check now runs before ghAvailable(), specifically so it's testable
+// without that dependency.
+test('openRegistryPullRequest returns a clean fallback, not a crash, when repoRoot is not a git repository', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sgq-nongit-'));
+  const filePath = path.join(repoRoot, 'schema-registry', 'pumps', 'test.json');
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, '{}');
+
+  const result = openRegistryPullRequest({ repoRoot, filePaths: [filePath], slugs: ['test'], confirmedAtIso: new Date().toISOString() });
+  assert.equal(result.opened, false);
+  assert.match(result.reason, /not a git repository/);
+
   fs.rmSync(repoRoot, { recursive: true, force: true });
 });

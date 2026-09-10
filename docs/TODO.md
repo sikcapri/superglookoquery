@@ -178,6 +178,32 @@ tool deserves the same explicit, one-by-one check, not an assumption that
       refusal, stale-report refusal, and a full write against a real,
       synthetic-but-realistic seeded archive) and manually against the
       real archive (stable hash across two consecutive real builds).
+      **Second real gap found and fixed, 2026-09-10** — prompted by the
+      user asking whether the real PR failure from the entry above (local
+      `main` 19 commits ahead of `origin/main`) could affect a real end
+      user pulling an older version and contributing later. Investigated
+      properly rather than answered from memory: built an actual repro
+      (a clone frozen at an old commit, origin advancing two commits it
+      never pulled, then submitting) and confirmed this is completely
+      fine — git computes a PR's diff from the actual fork point, not from
+      whether the branch is caught up, so an old/behind clone produces a
+      clean PR same as an up-to-date one. What actually failed yesterday
+      was specific to having 19 of one's OWN unpushed commits riding along
+      in the new branch, not "being behind" — a maintainer/active-developer
+      scenario, not a real end user's. That same investigation surfaced a
+      bigger, real bug: the packaged `.mcpb` a real end user installs has
+      NO `.git` directory at all (`mcpb` strips it from the bundle — see
+      `.mcpbignore`'s own comment), so `openRegistryPullRequest()`'s first
+      git command would have thrown a raw, uncaught "fatal: not a git
+      repository" for anyone actually using the packaged extension, not a
+      clean fallback message. Fixed: an explicit "is this a git
+      repository" check runs first (before even `ghAvailable()`), with the
+      same clean-fallback shape as every other precondition here. Verified
+      against a real non-git directory (with real `gh` available, so the
+      new check is confirmed to fire before, not instead of, the existing
+      `gh`-availability check) and covered by a permanent regression test
+      in `test/submit-registry-entry.test.js` that deliberately doesn't
+      need `gh` installed to run. 68/68 tests pass.
 - [x] Capability-gated module registration in `server.js`: `GATED_MODULES` +
       `registerCapabilityGatedModules()`, checked against `store.js`'s
       `field_capability` state. Runs *after* `server.connect()`, not inside
