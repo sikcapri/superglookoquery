@@ -269,6 +269,13 @@ Add an entry to [`CHANGELOG.md`](CHANGELOG.md) for anything a user or
 contributor would actually want to know about — not every commit. Keep it
 under `## [Unreleased]` until a release actually cuts that version.
 
+**After every release, also rebuild it on Glama**: Admin → Dockerfile tab
+→ Build → Create Release. Glama's score is pinned to whatever commit it
+last built against (confirmed 2026-09-10/11 — it does not auto-track new
+pushes), so a GitHub release alone does not update the Glama listing or
+its badge. Easy to forget since it's a manual step on a different site
+from everything else in this list.
+
 ## Pull requests
 
 - Run `npm test` first — it should be green.
