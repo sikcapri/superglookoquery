@@ -86,6 +86,47 @@ test('computeSummary returns the field shape get_diabetes_summary depends on', (
   assert.equal(typeof s.insulin.bolusUnits, 'number');
   assert.equal(typeof s.insulin.basalPercent, 'number');
   assert.ok(Array.isArray(s.settings) && s.settings[0].maxBasalRate === 3.5);
+  assert.equal(s.settings[0].basalRateSchedule, null, 'a device/account with no pumpProfilesBasal must degrade to null, not throw');
+  assert.equal(s.settings[0].scheduledDailyBasalUnits, null);
+});
+
+// Regression coverage for the 2026-09-11 discovery: the programmed
+// basal-rate schedule lives at settings.pumpProfilesBasal[0].segments,
+// structured identically to profilesBolus[0]'s segments (confirmed against
+// the real account's schema shape only, never real values), but was never
+// extracted before. Synthetic values here.
+test('computeSummary extracts the basal-rate schedule when pumpProfilesBasal is present', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+      pumpProfilesBasal: [{
+        segments: {
+          data: [
+            { segmentStart: 0, duration: 43200, value: 0.9 },
+            { segmentStart: 43200, duration: 43200, value: 1.1 },
+          ],
+          dailyTotal: 24,
+        },
+      }],
+    },
+  }];
+  const dailyInsulin = [
+    { dayUtc: new Date(START * 1000).toISOString().split('T')[0], dayEpoch: START, basalUnits: 18, bolusUnits: 4, totalUnits: 22 },
+  ];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', dailyInsulin);
+  assert.equal(s.settings[0].scheduledDailyBasalUnits, 24);
+  assert.equal(s.settings[0].basalRateSchedule.length, 2);
+  assert.equal(s.settings[0].basalRateSchedule[0].unitsPerHour, 0.9);
+  assert.equal(s.settings[0].basalRateSchedule[1].unitsPerHour, 1.1);
+  assert.ok(typeof s.settings[0].basalRateSchedule[0].from === 'string', 'from must be a formatted clock-hour string, matching targetBg/isf/carbRatio');
 });
 
 test('bucketTrend buckets by calendar granularity with sensible per-bucket fields', () => {

@@ -10,6 +10,34 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+### Added
+- `takeNewlyConfirmedCapabilities()` (built and tested long ago per
+  DESIGN.md 2a, but never actually called from anywhere) is now wired into
+  `get_diabetes_summary`, so a newly-detected field surfaces automatically
+  on the first question of any session instead of sitting silently in
+  `field_capability` forever.
+- `get_basal_bolus_breakdown`: a new capability-gated tool exposing
+  Glooko's own basal/bolus percentage breakdown (scheduled vs. other
+  basal, correction-only vs. fully automatic bolus), found via manual
+  `field_capability` inspection. Live-fetch-only, like the CamAPS tool.
+- `get_settings_history` (and `get_diabetes_summary`'s `settings` array)
+  now include `basalRateSchedule` and `scheduledDailyBasalUnits`: the
+  actual *programmed* basal-rate schedule, archived per settings
+  snapshot, previously sitting unextracted in the raw settings JSON this
+  whole time.
+
+### Fixed
+- The bundled sample database shipped with its own capability rows
+  marked unprompted, so a fresh offline install would show a false "new
+  field detected in your account" notice about its own static demo data.
+  `generate-sample-data.mjs` now marks everything it triggers as
+  already-prompted before shipping.
+- Several places named Omnipod 5 unconditionally in text every user sees
+  regardless of device (a chart tooltip, an install-time setting
+  description, a device-neutral example) — reworded to be device-neutral
+  or properly caveated, matching the pattern the codebase's own
+  well-written tool descriptions already used elsewhere.
+
 ## [0.1.4] - 2026-09-11
 
 ### Fixed

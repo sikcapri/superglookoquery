@@ -667,17 +667,28 @@ server.registerTool(
     title: 'Pump settings history',
     description:
       'Every pump setting change that was in effect during the window, in ' +
-      'chronological order: DIA, max basal rate, and the time-segmented target, ' +
-      'ISF and carb-ratio profiles.\n\n' +
+      'chronological order: DIA, max basal rate, the programmed basal-rate ' +
+      'schedule, and the time-segmented target, ISF and carb-ratio profiles.\n\n' +
+      'THIS IS THE ANSWER for "what\'s my basal rate" — basalRateSchedule is the ' +
+      'PROGRAMMED baseline (what the pump would run in manual mode), archived per ' +
+      'settings snapshot. On a closed-loop account (CamAPS FX, Control-IQ, etc.) ' +
+      'the algorithm overrides this continuously, so compare it against ' +
+      'get_daily_insulin\'s actual delivered basal rather than expecting them to ' +
+      'match, the gap between scheduledDailyBasalUnits and the real delivered ' +
+      'total is itself a meaningful figure (how hard the algorithm is working ' +
+      'relative to the programmed baseline).\n\n' +
       'Use it to establish which settings were active at a given time (essential ' +
       'before judging a bolus or an excursion), or to see how settings have been ' +
       'adjusted over a long span.\n\n' +
-      'Glucose-based values (target, ISF) are in the configured unit. Effective ' +
-      'timestamps are plain wall clock time (device-local), not UTC; the ' +
-      'per-segment "from" times are pump-schedule clock-hours.\n\n' +
+      'Glucose-based values (target, ISF) are in the configured unit. Basal-rate ' +
+      'values are in units/hour, never unit-converted (not a glucose value). ' +
+      'Effective timestamps are plain wall clock time (device-local), not UTC; ' +
+      'the per-segment "from" times are pump-schedule clock-hours.\n\n' +
       'Returns: a settings array, each entry with its effective timestamp, ' +
-      'DIA_hours, maxBasalRate, and the targetBg, isf and carbRatio profiles ' +
-      '(each a list of {from, value} time segments).',
+      'DIA_hours, maxBasalRate, basalRateSchedule (a list of {from, ' +
+      'unitsPerHour} time segments, or null if this device/account has never ' +
+      'shown it), scheduledDailyBasalUnits (or null), and the targetBg, isf and ' +
+      'carbRatio profiles (each a list of {from, value} time segments).',
     annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),

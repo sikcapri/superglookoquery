@@ -889,6 +889,23 @@ export function computeSummary(
     carbRatio: s.settings.profilesBolus[0].insulinToCarbRatioSegments.data.map(
       (sn) => ({ from: formatHour(sn.segmentStart), value: sn.value })
     ),
+    // The programmed basal-rate schedule (units/hour by time segment) and its
+    // scheduled daily total — confirmed present 2026-09-11 at
+    // settings.pumpProfilesBasal[0].segments, structured identically to
+    // profilesBolus[0]'s segments above, but never extracted before. This is
+    // the PROGRAMMED baseline the pump would run in manual mode; on a
+    // closed-loop account (CamAPS FX, Control-IQ, etc.) the algorithm departs
+    // from it continuously, so compare against get_daily_insulin's actual
+    // delivered basal rather than expecting them to match. Optional chaining
+    // throughout: not every device/account is confirmed to populate
+    // pumpProfilesBasal, so this degrades to null rather than throwing.
+    basalRateSchedule: s.settings.pumpProfilesBasal?.[0]?.segments?.data
+      ? s.settings.pumpProfilesBasal[0].segments.data.map((sn) => ({
+          from: formatHour(sn.segmentStart),
+          unitsPerHour: sn.value,
+        }))
+      : null,
+    scheduledDailyBasalUnits: s.settings.pumpProfilesBasal?.[0]?.segments?.dailyTotal ?? null,
   }));
 
   return {
