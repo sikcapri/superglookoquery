@@ -37,6 +37,19 @@ test('the CamAPS pump-mode module does NOT register for an account that has neve
   assert.ok(!srv.registered.includes('get_camaps_pump_mode_breakdown'), 'must genuinely not appear, not appear-and-error');
 });
 
+test('the basal/bolus breakdown module registers once its capability is confirmed', async () => {
+  recordFieldCapabilities('stats', { basalPercentage: 55 }, 12345);
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(srv.registered.includes('get_basal_bolus_breakdown'));
+});
+
+test('the basal/bolus breakdown module does NOT register for an account that has never shown the field', async () => {
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(!srv.registered.includes('get_basal_bolus_breakdown'), 'must genuinely not appear, not appear-and-error');
+});
+
 test('an unrelated confirmed capability does not satisfy the CamAPS module\'s requirement', async () => {
   recordFieldCapabilities('stats', { someOtherStatField: 1 }, 12345);
   const srv = fakeServer();

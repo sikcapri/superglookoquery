@@ -5,6 +5,7 @@ import {
   buildSplitBolusLog,
   summariseSplitBolusStats,
   extractCamapsPumpModeBreakdown,
+  extractBasalBolusBreakdown,
   extractDeviceNames,
 } from '../src/analytics.js';
 
@@ -118,6 +119,45 @@ test('extractCamapsPumpModeBreakdown returns the breakdown when fields are popul
 test('extractCamapsPumpModeBreakdown returns null for a non-CamAPS account (fields genuinely absent)', () => {
   assert.equal(extractCamapsPumpModeBreakdown({ stdDev: 1.2, median: 7.0 }), null);
   assert.equal(extractCamapsPumpModeBreakdown(null), null);
+});
+
+// Regression coverage for the 2026-09-11 discovery: found via manual
+// field_capability inspection during real user testing that a whole new
+// 89-field "stats" response had appeared and gone completely unnoticed
+// (see the new-capability wiring in server.js). These 8 fields answer the
+// "where's my basal rate" question directly. Synthetic values here, not the
+// real account's numbers.
+test('extractBasalBolusBreakdown returns the breakdown when fields are populated', () => {
+  const stats = {
+    basalPercentage: 55,
+    otherBasalPercentage: 5,
+    scheduledBasalsSum: 18.4,
+    correctionBolusPercentage: 12,
+    numOfCorrectionBolusesPerDay: 1.5,
+    automaticBolusPercentage: 30,
+    automaticBolusUnitsPerDay: 6.2,
+    automaticBolusCountPerDay: 8,
+  };
+  const breakdown = extractBasalBolusBreakdown(stats);
+  assert.equal(breakdown.basalPercent, 55);
+  assert.equal(breakdown.otherBasalPercent, 5);
+  assert.equal(breakdown.scheduledBasalsSum, 18.4);
+  assert.equal(breakdown.correctionBolusPercent, 12);
+  assert.equal(breakdown.correctionBolusesPerDay, 1.5);
+  assert.equal(breakdown.automaticBolusPercent, 30);
+  assert.equal(breakdown.automaticBolusUnitsPerDay, 6.2);
+  assert.equal(breakdown.automaticBolusCountPerDay, 8);
+});
+
+test('extractBasalBolusBreakdown treats a real zero as populated, not absent', () => {
+  const breakdown = extractBasalBolusBreakdown({ basalPercentage: 0, otherBasalPercentage: null });
+  assert.equal(breakdown.basalPercent, 0);
+  assert.equal(breakdown.otherBasalPercent, null);
+});
+
+test('extractBasalBolusBreakdown returns null when none of these fields are populated', () => {
+  assert.equal(extractBasalBolusBreakdown({ stdDev: 1.2, median: 7.0 }), null);
+  assert.equal(extractBasalBolusBreakdown(null), null);
 });
 
 // Regression coverage for the 2026-09-09 fix: CGM readings never carry a

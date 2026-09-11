@@ -543,6 +543,52 @@ export function extractCamapsPumpModeBreakdown(stats) {
   };
 }
 
+// Confirmed present in this account's `stats` (data2) response 2026-09-11,
+// via field_capability — none of these names carry a device-specific prefix
+// (unlike camapsPumpMode* above), so this is treated as a general Glooko
+// stats capability, not assumed CamAPS-only or assumed present for every
+// account. IMPORTANT CAVEAT: these field NAMES are confirmed real and
+// populated for this account; their exact semantics below are this
+// project's own best-effort reading of Glooko's naming convention, not
+// independently verified against a real value sample (deliberately never
+// fetched — see this project's whole privacy design). Cross-check the
+// interpretation against Glooko's own app if precision matters for a
+// clinical decision.
+export const BASAL_BOLUS_BREAKDOWN_KEYS = [
+  'basalPercentage',
+  'otherBasalPercentage',
+  'scheduledBasalsSum',
+  'correctionBolusPercentage',
+  'numOfCorrectionBolusesPerDay',
+  'automaticBolusPercentage',
+  'automaticBolusUnitsPerDay',
+  'automaticBolusCountPerDay',
+];
+
+/**
+ * Pull the basal/bolus percentage breakdown out of a raw `stats` (Glooko's
+ * data2) blob, or null if none of these fields are populated for this
+ * account/window. Same live-fetch-only caveat as
+ * extractCamapsPumpModeBreakdown: this is never archived (see range.js's
+ * getProcessedRange, stats: null by design).
+ */
+export function extractBasalBolusBreakdown(stats) {
+  if (!stats) return null;
+  const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
+  const hasAny = BASAL_BOLUS_BREAKDOWN_KEYS.some((k) => isPopulated(stats[k]));
+  if (!hasAny) return null;
+  return {
+    basalPercent: numOrNull(stats.basalPercentage),
+    otherBasalPercent: numOrNull(stats.otherBasalPercentage),
+    scheduledBasalsSum: numOrNull(stats.scheduledBasalsSum),
+    correctionBolusPercent: numOrNull(stats.correctionBolusPercentage),
+    correctionBolusesPerDay: numOrNull(stats.numOfCorrectionBolusesPerDay),
+    automaticBolusPercent: numOrNull(stats.automaticBolusPercentage),
+    automaticBolusUnitsPerDay: numOrNull(stats.automaticBolusUnitsPerDay),
+    automaticBolusCountPerDay: numOrNull(stats.automaticBolusCountPerDay),
+  };
+}
+
 /**
  * Best-effort device model names from Glooko's device list (`data3.devices`),
  * one entry per physical device on the account. Confirmed 2026-09-09: unlike

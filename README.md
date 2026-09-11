@@ -275,6 +275,7 @@ Most tools take optional `units`, `lower`, and `upper` parameters. Left out, Cla
 | Tool | Purpose |
 |---|---|
 | `get_camaps_pump_mode_breakdown` | How much of a window CamAPS FX spent in each of its own operating modes (automatic/manual/easeOff/boost/liberty/attempting). Registers only for an account whose data has actually shown this field, see [How device support actually works](#how-device-support-actually-works). Unlike everything else above, this is a live call to Glooko every time (a per-window aggregate Glooko computes on request, not something this project archives), so expect it to be slower, and occasionally to hit a transient network error. |
+| `get_basal_bolus_breakdown` | A finer-grained basal/bolus split: scheduled versus other basal, and correction-only versus fully automatic bolus delivery. Field names are confirmed real for an account that shows them; their exact meaning is this project's best-effort reading of Glooko's own naming, not independently verified against real values, cross-check against Glooko's own app if precision matters. Same live-call caveats as the CamAPS tool above. |
 
 ### Schema-registry contribution tools (a two-step, human-confirmed flow)
 

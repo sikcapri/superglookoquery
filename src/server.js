@@ -52,6 +52,7 @@ import {
   spanDays,
   CAPS,
   fetchCamapsPumpModeBreakdown,
+  fetchBasalBolusBreakdown,
 } from './range.js';
 import { resolveChartsDir } from './paths.js';
 import { ensureDbReady, getFieldCapabilities, takeNewlyConfirmedCapabilities } from './store.js';
@@ -1727,6 +1728,68 @@ const GATED_MODULES = [
             const s = assertIsoDate(start, 'start');
             const e = assertIsoDate(end, 'end');
             const breakdown = await fetchCamapsPumpModeBreakdown(s, e);
+            return jsonResult({ window: { start: s, end: e }, breakdown });
+          } catch (err) {
+            return errorResult(err.message);
+          }
+        }
+      );
+    },
+  },
+  {
+    // Confirmed present in this same account's 'stats' response 2026-09-11,
+    // found via manual field_capability inspection during real user testing
+    // — a full 89-field "stats" response had appeared for the first time
+    // the day before and gone completely unnoticed, since nothing surfaced
+    // newly-confirmed capabilities to anyone (see the new-capability note
+    // wired into get_diabetes_summary above, and CHANGELOG.md). None of
+    // these field names carry a device-specific prefix (unlike
+    // camapsPumpMode* above), so this is registered as a general Glooko
+    // stats capability, not assumed CamAPS-only.
+    name: 'basal_bolus_breakdown',
+    requires: [{ category: 'stats', fieldName: 'basalPercentage' }],
+    register: (srv) => {
+      srv.registerTool(
+        'get_basal_bolus_breakdown',
+        {
+          title: 'Basal/bolus percentage breakdown',
+          description:
+            'A finer-grained basal/bolus split than get_diabetes_summary\'s ' +
+            'basalPercent/bolusPercent: how much of basal delivery came from the ' +
+            'scheduled program versus other adjustments, and how much of bolus ' +
+            'delivery was correction-only versus fully automatic (algorithm-driven, ' +
+            'not entered by the patient).\n\n' +
+            'HONESTY CAVEAT (read before relying on this): the field NAMES below are ' +
+            'confirmed real and populated for this account. Their exact meaning is ' +
+            'this project\'s own best-effort reading of Glooko\'s own naming ' +
+            'convention (e.g. "scheduledBasalsSum" is inferred to mean basal ' +
+            'delivered via the programmed schedule specifically), NOT independently ' +
+            'verified against a real value sample — this project deliberately never ' +
+            'inspects real account values during development. If precision matters ' +
+            'for a decision, cross-check the interpretation against Glooko\'s own app.\n\n' +
+            'UNLIKE archive-backed tools, this makes a LIVE call to Glooko every time ' +
+            '— same reason and same caveats as get_camaps_pump_mode_breakdown (slower, ' +
+            'and a transient network/login error is possible here specifically).\n\n' +
+            'Returns: window, and breakdown with basalPercent/otherBasalPercent ' +
+            '(does not necessarily sum to basalPercent from get_diabetes_summary — ' +
+            'different Glooko computation), scheduledBasalsSum (units, best-effort ' +
+            'reading — see caveat above), correctionBolusPercent/' +
+            'correctionBolusesPerDay, and automaticBolusPercent/' +
+            'automaticBolusUnitsPerDay/automaticBolusCountPerDay. Any field Glooko ' +
+            'didn\'t populate for this window comes back null, not zero. Returns ' +
+            'breakdown: null (not an error) if Glooko has nothing for this exact ' +
+            'window.',
+          annotations: { readOnlyHint: true },
+          inputSchema: {
+            start: z.string().describe(startDesc),
+            end: z.string().describe(endDesc),
+          },
+        },
+        async ({ start, end }) => {
+          try {
+            const s = assertIsoDate(start, 'start');
+            const e = assertIsoDate(end, 'end');
+            const breakdown = await fetchBasalBolusBreakdown(s, e);
             return jsonResult({ window: { start: s, end: e }, breakdown });
           } catch (err) {
             return errorResult(err.message);

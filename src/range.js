@@ -31,6 +31,7 @@ import {
   deriveBasalStates,
   extractDeviceEvents,
   extractCamapsPumpModeBreakdown,
+  extractBasalBolusBreakdown,
   extractDeviceNames,
 } from './analytics.js';
 import {
@@ -244,6 +245,21 @@ export async function fetchCamapsPumpModeBreakdown(startISO, endISO) {
     recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
   }
   return extractCamapsPumpModeBreakdown(raw.data2);
+}
+
+/**
+ * Live fetch of the basal/bolus percentage breakdown for an exact window.
+ * Same not-archived caveat as fetchCamapsPumpModeBreakdown above — this
+ * blob is never persisted, so every call re-fetches from Glooko.
+ */
+export async function fetchBasalBolusBreakdown(startISO, endISO) {
+  if (!glookoConfigured()) return null;
+  await ensureDbReady();
+  const raw = await fetchGlookoRange(startISO, endISO);
+  if (raw.data2) {
+    recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
+  }
+  return extractBasalBolusBreakdown(raw.data2);
 }
 
 /**
