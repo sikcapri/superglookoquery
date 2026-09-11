@@ -43,6 +43,7 @@ const {
   ingestBasalStates,
   ingestDeviceEvents,
   markDays,
+  takeNewlyConfirmedCapabilities,
 } = await import('../src/store.js');
 
 // --- seeded PRNG, so this is reproducible run to run -----------------------
@@ -241,6 +242,16 @@ ingestDailyInsulin(dailyInsulinRecords, todayUtc);
 ingestDeviceEvents({ podChanges, sensorChanges });
 if (completeDays.length) markDays(completeDays, true);
 markDays([todayUtc], false);
+
+// Mark every capability this synthetic data itself triggered as already
+// prompted, so a fresh install running offline against this bundled sample
+// data never surfaces a "new field detected, mention this to the patient"
+// notice about the demo data — that notice is only meaningful for a real
+// account's genuinely new capabilities (see get_diabetes_summary's use of
+// takeNewlyConfirmedCapabilities in server.js). Found 2026-09-11: this
+// wasn't done before, so every fresh sample-data install was silently
+// showing that notice about its own bundled data.
+takeNewlyConfirmedCapabilities();
 
 console.log(`Generated synthetic sample archive at ${OUT_PATH}`);
 console.log(`  ${timeline.filter((t) => t.type === 'CGM').length} CGM readings, ${timeline.filter((t) => t.type === 'BOLUS').length} bolus events over ${DAYS} days.`);

@@ -54,7 +54,7 @@ import {
   fetchCamapsPumpModeBreakdown,
 } from './range.js';
 import { resolveChartsDir } from './paths.js';
-import { ensureDbReady, getFieldCapabilities } from './store.js';
+import { ensureDbReady, getFieldCapabilities, takeNewlyConfirmedCapabilities } from './store.js';
 import {
   computeSummary,
   calculateHourly,
@@ -368,6 +368,23 @@ server.registerTool(
         bundle.dailyInsulin
       );
       summary.servedFromArchive = bundle.servedFromArchive;
+      // DESIGN.md 2a's "prompt the moment something new is confirmed" — this
+      // is the mandatory first call of every session (see the persona's
+      // retrieval sequence), so it is the natural place for a newly-detected
+      // field to actually reach the patient instead of sitting silently in
+      // field_capability forever. Fires at most once per field, ever (see
+      // takeNewlyConfirmedCapabilities's own doc comment).
+      const newCapabilities = takeNewlyConfirmedCapabilities();
+      if (newCapabilities.length) {
+        summary.newFieldsDetected = {
+          fields: newCapabilities,
+          note:
+            'Glooko has started sending these fields for this account for the ' +
+            'first time — mention this to the patient, and if it looks clinically ' +
+            'relevant, suggest they consider running get_registry_contribution_report ' +
+            'to help other users of this same device get first-class support for it.',
+        };
+      }
       if (!bundle.timeline.length) {
         return jsonResult({
           ...summary,
