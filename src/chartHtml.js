@@ -888,12 +888,12 @@ const HTML_TAIL = `;
     'Split': 'How this day’s total insulin divided between bolus (meal/correction) and basal (background) delivery.',
     'DIA': 'Duration of Insulin Action: how many hours the pump assumes a bolus keeps working, used to estimate insulin still on board.',
     'Max basal': 'The highest background insulin rate the pump is allowed to run on its own.',
-    'Target': 'The glucose target(s) the Omnipod 5 algorithm aims for, by time of day.',
+    'Target': 'The glucose target(s) the pump’s algorithm aims for, by time of day.',
     'ISF': 'Insulin Sensitivity Factor: how much one unit of insulin is expected to lower glucose.',
     'Carb ratio': 'Grams of carbohydrate covered by one unit of insulin, by time of day.',
   };
   var GROUP_TOOLTIPS = {
-    'Bolus types': 'Meal: insulin dosed for food. Manual correction: a dose entered by hand to bring down a high. System correction: an automatic correction dose from the Omnipod 5 algorithm. Meal+correction: one combined dose covering both.',
+    'Bolus types': 'Meal: insulin dosed for food. Manual correction: a dose entered by hand to bring down a high. System correction: an automatic correction dose from the pump’s own algorithm. Meal+correction: one combined dose covering both.',
     'Carbs': 'Total grams of carbohydrate logged alongside boluses this day.',
   };
 

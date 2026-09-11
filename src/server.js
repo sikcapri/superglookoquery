@@ -1284,7 +1284,8 @@ server.registerTool(
   {
     title: 'Pod and CGM sensor changes',
     description:
-      'Pod/site changes (e.g. the Omnipod is replaced roughly every 3 days) and ' +
+      'Pod or infusion-site changes (a tubeless pump\'s pod, or a tubed pump\'s ' +
+      'cannula/site, typically changed every few days) and ' +
       'CGM sensor changes, as timestamped events, kept as two separate lists.\n\n' +
       'DEVICE COVERAGE: whether Glooko reports these events at all depends on ' +
       'the device — confirmed empty (never populated, over a full 30-day check) ' +

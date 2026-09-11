@@ -77,7 +77,7 @@
     },
     {
       "name": "get_basal_delivery",
-      "description": "What the Omnipod 5 algorithm was doing with basal delivery over time (normal / suspend / max / limited), as behavioural states, not units."
+      "description": "What the pump's algorithm was doing with basal delivery over time (normal / suspend / max / limited), as behavioural states, not units. Only populated by Glooko for some pumps."
     },
     {
       "name": "get_daily_insulin",
@@ -85,7 +85,7 @@
     },
     {
       "name": "get_settings_history",
-      "description": "Every Omnipod 5 setting change in force during a window: DIA, max basal rate, and the time-segmented target/ISF/carb-ratio profiles."
+      "description": "Every pump setting change in force during a window: DIA, max basal rate, and the time-segmented target/ISF/carb-ratio profiles."
     },
     {
       "name": "get_device_events",
@@ -145,7 +145,7 @@
     "omni_oldest_date": {
       "type": "string",
       "title": "History to load on first run (YYYY-MM-DD)",
-      "description": "Earliest date you have Omnipod data, or want to look back to.",
+      "description": "Earliest date you have device data, or want to look back to.",
       "default": "2025-01-01",
       "required": true
     },
