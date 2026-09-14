@@ -446,22 +446,6 @@ export function runTopUp(onProgress) {
   return withSyncLock(() => topUp(onProgress));
 }
 
-/**
- * First-call entry for the server: if the archive is empty, cold start;
- * otherwise top up. Returns when the archive is usable. If a sync is already
- * running (e.g. a background cold start), awaits it rather than duplicating.
- */
-export function ensureFreshOnFirstCall(onProgress = () => {}) {
-  return withSyncLock(async () => {
-    const { coverageEpoch } = getStreamMaxima();
-    if (coverageEpoch === null) {
-      await coldStart(onProgress);
-    } else {
-      await topUp(onProgress);
-    }
-  });
-}
-
 // --- staleness reporting --------------------------------------------------
 
 /**

@@ -687,8 +687,11 @@ server.registerTool(
       'Returns: a settings array, each entry with its effective timestamp, ' +
       'DIA_hours, maxBasalRate, basalRateSchedule (a list of {from, ' +
       'unitsPerHour} time segments, or null if this device/account has never ' +
-      'shown it), scheduledDailyBasalUnits (or null), and the targetBg, isf and ' +
-      'carbRatio profiles (each a list of {from, value} time segments).',
+      'shown it), scheduledDailyBasalUnits (or null), the targetBg, isf and ' +
+      'carbRatio profiles (each a list of {from, value} time segments), and ' +
+      'bgCorrectionThreshold (same shape, or null if this device/account has ' +
+      'never shown it) — a separate correction-trigger level distinct from the ' +
+      'ordinary target range, where the device populates it.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),

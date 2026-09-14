@@ -889,6 +889,19 @@ export function computeSummary(
     carbRatio: s.settings.profilesBolus[0].insulinToCarbRatioSegments.data.map(
       (sn) => ({ from: formatHour(sn.segmentStart), value: sn.value })
     ),
+    // A fourth segment type sitting in the same profilesBolus[0] object as
+    // the three above, structurally confirmed 2026-09-11 but never
+    // extracted — empty (data: []) for this account, so its real shape for
+    // an account that populates it is unverified; assumed to match its
+    // siblings' {segmentStart, value} shape since it lives in the identical
+    // parent structure. Null when genuinely absent (no bgCorrectionThresholdSegments
+    // key at all) vs [] when present but unpopulated — both are real, distinct states.
+    bgCorrectionThreshold: s.settings.profilesBolus[0].bgCorrectionThresholdSegments
+      ? s.settings.profilesBolus[0].bgCorrectionThresholdSegments.data.map((sn) => ({
+          from: formatHour(sn.segmentStart),
+          value: toDisplay(sn.value, units),
+        }))
+      : null,
     // The programmed basal-rate schedule (units/hour by time segment) and its
     // scheduled daily total — confirmed present 2026-09-11 at
     // settings.pumpProfilesBasal[0].segments, structured identically to
@@ -1015,39 +1028,7 @@ function round(v, dp = 2) {
   return +Number(v).toFixed(dp);
 }
 
-// --- day completeness & observed span -------------------------------------
-/**
- * Build the set of UTC day strings (YYYY-MM-DD) that contain at least one CGM
- * reading. Used to classify a day as "whole" by the neighbour rule.
- */
-export function daysWithReadings(timeline) {
-  const days = new Set();
-  for (const item of timeline) {
-    if (item.type !== 'CGM') continue;
-    days.add(new Date(item.epoch * 1000).toISOString().slice(0, 10));
-  }
-  return days;
-}
-
-/** The UTC day string N days from the given day string. */
-function shiftDay(dayStr, deltaDays) {
-  const d = new Date(dayStr + 'T00:00:00.000Z');
-  d.setUTCDate(d.getUTCDate() + deltaDays);
-  return d.toISOString().slice(0, 10);
-}
-
-/**
- * A day is WHOLE when both adjacent calendar days have at least one reading: a
- * day bracketed by data on each side must itself be fully covered. The only
- * partial days are therefore the first and last of the data (or any day next to
- * an interior gap). Whole days carry a trustworthy whole-day basal that can be
- * combined with our bolus into a clean daily total; partial days show basal
- * flagged as a whole-day figure that the window may not fully cover.
- */
-export function isWholeDay(dayStr, daySet) {
-  return daySet.has(shiftDay(dayStr, -1)) && daySet.has(shiftDay(dayStr, 1));
-}
-
+// --- observed span ----------------------------------------------------------
 /**
  * Decimal day-span actually observed between the first and last CGM reading of
  * a set of epochs (seconds). This is the correct denominator for per-day RATES

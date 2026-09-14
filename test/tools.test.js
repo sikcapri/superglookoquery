@@ -129,6 +129,50 @@ test('computeSummary extracts the basal-rate schedule when pumpProfilesBasal is 
   assert.ok(typeof s.settings[0].basalRateSchedule[0].from === 'string', 'from must be a formatted clock-hour string, matching targetBg/isf/carbRatio');
 });
 
+// Regression coverage for the 2026-09-15 discovery: bgCorrectionThresholdSegments
+// sits in the same profilesBolus[0] object as targetBg/isf/carbRatio, structurally
+// confirmed but never extracted (empty for the real account it was found on).
+test('computeSummary extracts bgCorrectionThreshold when the segment key is present', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+        bgCorrectionThresholdSegments: { data: [{ segmentStart: 0, value: 8.5 }] },
+      }],
+    },
+  }];
+  const dailyInsulin = [
+    { dayUtc: new Date(START * 1000).toISOString().split('T')[0], dayEpoch: START, basalUnits: 18, bolusUnits: 4, totalUnits: 22 },
+  ];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', dailyInsulin);
+  assert.equal(s.settings[0].bgCorrectionThreshold.length, 1);
+  assert.equal(s.settings[0].bgCorrectionThreshold[0].value, 8.5);
+});
+
+test('computeSummary returns bgCorrectionThreshold: null when the key is genuinely absent', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.settings[0].bgCorrectionThreshold, null);
+});
+
 test('bucketTrend buckets by calendar granularity with sensible per-bucket fields', () => {
   const timeline = buildTimeline();
   const buckets = bucketTrend(timeline, THRESHOLDS, {

@@ -25,6 +25,22 @@ summary, not a substitute for it.
   actual *programmed* basal-rate schedule, archived per settings
   snapshot, previously sitting unextracted in the raw settings JSON this
   whole time.
+- `get_settings_history` also now includes `bgCorrectionThreshold`, a
+  fourth segment type living in the same raw structure as
+  targetBg/isf/carbRatio, structurally confirmed but never extracted
+  (found via a systematic pass looking for the same "reads part of an
+  object, ignores real siblings" pattern that found the basal-rate
+  schedule).
+
+### Removed
+- Two genuinely dead code paths found via a systematic "is this exported
+  function ever actually called" pass: `daysWithReadings`/`isWholeDay`
+  (a whole/partial-day classification scheme the real per-day
+  calculations explicitly document choosing NOT to use — superseded by
+  a simpler design, not a forgotten feature) and `ensureFreshOnFirstCall`
+  (an earlier, simpler cold-start/top-up entry point superseded by
+  `getProcessedRange`'s more complete logic). Neither had a test or a
+  caller anywhere in the codebase.
 
 ### Fixed
 - The bundled sample database shipped with its own capability rows
