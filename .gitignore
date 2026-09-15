@@ -2,6 +2,7 @@ node_modules
 npm-debug.log
 .env
 *.local
+RELEASE_CHECKLIST.local.md
 data/
 *.mcpb
 .DS_Store

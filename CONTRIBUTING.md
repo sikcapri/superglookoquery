@@ -269,20 +269,6 @@ Add an entry to [`CHANGELOG.md`](CHANGELOG.md) for anything a user or
 contributor would actually want to know about — not every commit. Keep it
 under `## [Unreleased]` until a release actually cuts that version.
 
-**After every release, also rebuild it on Glama**, in this exact order:
-1. Repository tab → click the **"(sync)"** link first. Glama's own
-   "Current head commit" does NOT auto-refresh from GitHub just because a
-   new push/release happened (confirmed 2026-09-10/11) — skipping this
-   step means the next Build can silently run against the OLD commit even
-   though a genuine release just shipped.
-2. Admin → Dockerfile tab → Build → Create Release.
-
-Glama's score/badge is pinned to whatever commit it last actually built
-against, so a GitHub release alone does not update the Glama listing.
-Easy to forget both steps since this is a manual process on a different
-site from everything else in this list — and easy to do step 2 without
-step 1 and get a stale rebuild that looks successful.
-
 ## Pull requests
 
 - Run `npm test` first — it should be green.
