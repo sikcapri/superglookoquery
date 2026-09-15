@@ -47,6 +47,15 @@ summary, not a substitute for it.
   structural sibling gap found via a shape-only inspection sweep of the
   real archive's raw settings JSON, same "reads part of the object,
   ignores real siblings" pattern as this session's other fixes.
+- `get_basal_bolus_breakdown` now returns a much larger breakdown: a full
+  sweep of every confirmed-real `stats` field name (via `field_capability`,
+  names only, never values) turned up ~24 direct siblings of the original
+  8 fields, sitting unextracted in the same raw object — bolus overrides,
+  dosing broken out by delivery method (pump/pen/manually-logged),
+  premixed-insulin figures (an MDI/pen concept this pump-centric project
+  hadn't accounted for), and a few account-context flags (`hasPen`,
+  `hasPump`, `hasEditedDoses`). All existing fields keep their exact same
+  names and values; this is a pure addition.
 
 ### Removed
 - Two genuinely dead code paths found via a systematic "is this exported

@@ -568,11 +568,35 @@ export const BASAL_BOLUS_BREAKDOWN_KEYS = [
   'basalPercentage',
   'otherBasalPercentage',
   'scheduledBasalsSum',
+  'basalUnitsPerDay',
+  'otherBasalUnitsPerDay',
+  'bolusPercentage',
+  'bolusUnitsPerDay',
+  'numOfBolusesPerDay',
+  'averageIndividualBolus',
   'correctionBolusPercentage',
   'numOfCorrectionBolusesPerDay',
   'automaticBolusPercentage',
   'automaticBolusUnitsPerDay',
   'automaticBolusCountPerDay',
+  'otherBolusPercentage',
+  'otherBolusUnitsPerDay',
+  'premixedPercentage',
+  'premixedUnitsPerDay',
+  'otherPremixedPercentage',
+  'bolusOverridePercentage',
+  'bolusOverridesCount',
+  'penTotalDosesPerDay',
+  'manualInsulinDosesPerDay',
+  'otherTotalDosesPerDay',
+  'otherUnknownUnitsPerDay',
+  'totalOtherInsulinPerDay',
+  'totalPumpInsulinPerDay',
+  'daysWithoutInsulin',
+  'hasPen',
+  'hasPump',
+  'hasEditedDoses',
+  'showAutoBolusStats',
 ];
 
 /**
@@ -581,6 +605,19 @@ export const BASAL_BOLUS_BREAKDOWN_KEYS = [
  * account/window. Same live-fetch-only caveat as
  * extractCamapsPumpModeBreakdown: this is never archived (see range.js's
  * getProcessedRange, stats: null by design).
+ *
+ * Expanded 2026-09-16 via a full field_capability sweep of every confirmed
+ * real `stats` field name: everything below beyond the original 8 keys is a
+ * direct sibling of basalPercentage/otherBasalPercentage/
+ * correctionBolusPercentage/automaticBolusPercentage in the SAME raw stats
+ * object, structurally confirmed present but never extracted — the same
+ * "reads part of the object, ignores real siblings" gap this whole project
+ * has been sweeping for. hasPen/hasPump/premixedPercentage/penTotalDosesPerDay/
+ * manualInsulinDosesPerDay in particular suggest Glooko's stats blob is
+ * built for BOTH pump and pen (MDI) accounts, something this pump-centric
+ * project had not otherwise accounted for. Same field-name-confirmed,
+ * semantics-not-independently-verified caveat as the original 8: cross-check
+ * against Glooko's own app if precision matters for a clinical decision.
  */
 export function extractBasalBolusBreakdown(stats) {
   if (!stats) return null;
@@ -591,11 +628,43 @@ export function extractBasalBolusBreakdown(stats) {
     basalPercent: numOrNull(stats.basalPercentage),
     otherBasalPercent: numOrNull(stats.otherBasalPercentage),
     scheduledBasalsSum: numOrNull(stats.scheduledBasalsSum),
+    basalUnitsPerDay: numOrNull(stats.basalUnitsPerDay),
+    otherBasalUnitsPerDay: numOrNull(stats.otherBasalUnitsPerDay),
+    bolusPercent: numOrNull(stats.bolusPercentage),
+    bolusUnitsPerDay: numOrNull(stats.bolusUnitsPerDay),
+    bolusesPerDay: numOrNull(stats.numOfBolusesPerDay),
+    averageIndividualBolusUnits: numOrNull(stats.averageIndividualBolus),
     correctionBolusPercent: numOrNull(stats.correctionBolusPercentage),
     correctionBolusesPerDay: numOrNull(stats.numOfCorrectionBolusesPerDay),
     automaticBolusPercent: numOrNull(stats.automaticBolusPercentage),
     automaticBolusUnitsPerDay: numOrNull(stats.automaticBolusUnitsPerDay),
     automaticBolusCountPerDay: numOrNull(stats.automaticBolusCountPerDay),
+    otherBolusPercent: numOrNull(stats.otherBolusPercentage),
+    otherBolusUnitsPerDay: numOrNull(stats.otherBolusUnitsPerDay),
+    // Premixed insulin (fixed NPH/regular mixes) is an MDI/pen concept, not
+    // a pump one — these will likely only ever populate for a pen account.
+    premixedPercent: numOrNull(stats.premixedPercentage),
+    premixedUnitsPerDay: numOrNull(stats.premixedUnitsPerDay),
+    otherPremixedPercent: numOrNull(stats.otherPremixedPercentage),
+    bolusOverridePercent: numOrNull(stats.bolusOverridePercentage),
+    bolusOverridesCount: numOrNull(stats.bolusOverridesCount),
+    penTotalDosesPerDay: numOrNull(stats.penTotalDosesPerDay),
+    manualInsulinDosesPerDay: numOrNull(stats.manualInsulinDosesPerDay),
+    otherTotalDosesPerDay: numOrNull(stats.otherTotalDosesPerDay),
+    otherUnknownUnitsPerDay: numOrNull(stats.otherUnknownUnitsPerDay),
+    totalOtherInsulinPerDay: numOrNull(stats.totalOtherInsulinPerDay),
+    totalPumpInsulinPerDay: numOrNull(stats.totalPumpInsulinPerDay),
+    daysWithoutInsulin: numOrNull(stats.daysWithoutInsulin),
+    // Boolean/meta flags, not numeric -- kept as-is rather than run through
+    // numOrNull, which would coerce a real `false` toward a numeric 0.
+    hasPen: stats.hasPen ?? null,
+    hasPump: stats.hasPump ?? null,
+    hasEditedDoses: stats.hasEditedDoses ?? null,
+    // Looks like a Glooko UI-display toggle (whether ITS OWN app shows an
+    // auto-bolus stats section) rather than clinical data -- included for
+    // completeness since it's structurally confirmed present, but treat
+    // with low confidence as a meaningful clinical figure.
+    showAutoBolusStats: stats.showAutoBolusStats ?? null,
   };
 }
 

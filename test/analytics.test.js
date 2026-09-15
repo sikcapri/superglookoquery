@@ -156,6 +156,56 @@ test('extractBasalBolusBreakdown treats a real zero as populated, not absent', (
   assert.equal(breakdown.otherBasalPercent, null);
 });
 
+// Regression coverage for the 2026-09-16 field_capability sweep: every one
+// of these is a confirmed-real sibling of the original 8 keys, living in
+// the exact same stats object, never extracted before.
+test('extractBasalBolusBreakdown includes the expanded dosing/device-use fields when populated', () => {
+  const stats = {
+    basalPercentage: 55,
+    basalUnitsPerDay: 18.4,
+    otherBasalUnitsPerDay: 0.5,
+    bolusPercentage: 45,
+    bolusUnitsPerDay: 12.1,
+    numOfBolusesPerDay: 4,
+    averageIndividualBolus: 3.0,
+    otherBolusPercentage: 3,
+    otherBolusUnitsPerDay: 0.4,
+    premixedPercentage: 0,
+    premixedUnitsPerDay: 0,
+    otherPremixedPercentage: 0,
+    bolusOverridePercentage: 8,
+    bolusOverridesCount: 2,
+    penTotalDosesPerDay: 0,
+    manualInsulinDosesPerDay: 0,
+    otherTotalDosesPerDay: 1,
+    otherUnknownUnitsPerDay: 0,
+    totalOtherInsulinPerDay: 0,
+    totalPumpInsulinPerDay: 30.5,
+    daysWithoutInsulin: 0,
+    hasPen: false,
+    hasPump: true,
+    hasEditedDoses: false,
+    showAutoBolusStats: true,
+  };
+  const breakdown = extractBasalBolusBreakdown(stats);
+  assert.equal(breakdown.basalUnitsPerDay, 18.4);
+  assert.equal(breakdown.otherBasalUnitsPerDay, 0.5);
+  assert.equal(breakdown.bolusPercent, 45);
+  assert.equal(breakdown.bolusUnitsPerDay, 12.1);
+  assert.equal(breakdown.bolusesPerDay, 4);
+  assert.equal(breakdown.averageIndividualBolusUnits, 3.0);
+  assert.equal(breakdown.otherBolusPercent, 3);
+  assert.equal(breakdown.otherBolusUnitsPerDay, 0.4);
+  assert.equal(breakdown.premixedPercent, 0);
+  assert.equal(breakdown.bolusOverridePercent, 8);
+  assert.equal(breakdown.bolusOverridesCount, 2);
+  assert.equal(breakdown.totalPumpInsulinPerDay, 30.5);
+  assert.equal(breakdown.hasPen, false);
+  assert.equal(breakdown.hasPump, true);
+  assert.equal(breakdown.hasEditedDoses, false);
+  assert.equal(breakdown.showAutoBolusStats, true);
+});
+
 test('extractBasalBolusBreakdown returns null when none of these fields are populated', () => {
   assert.equal(extractBasalBolusBreakdown({ stdDev: 1.2, median: 7.0 }), null);
   assert.equal(extractBasalBolusBreakdown(null), null);

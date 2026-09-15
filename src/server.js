@@ -1803,13 +1803,26 @@ const GATED_MODULES = [
             'and a transient network/login error is possible here specifically).\n\n' +
             'Returns: window, and breakdown with basalPercent/otherBasalPercent ' +
             '(does not necessarily sum to basalPercent from get_diabetes_summary — ' +
-            'different Glooko computation), scheduledBasalsSum (units, best-effort ' +
-            'reading — see caveat above), correctionBolusPercent/' +
-            'correctionBolusesPerDay, and automaticBolusPercent/' +
-            'automaticBolusUnitsPerDay/automaticBolusCountPerDay. Any field Glooko ' +
-            'didn\'t populate for this window comes back null, not zero. Returns ' +
-            'breakdown: null (not an error) if Glooko has nothing for this exact ' +
-            'window.',
+            'different Glooko computation), scheduledBasalsSum, basalUnitsPerDay/' +
+            'otherBasalUnitsPerDay (units, best-effort reading — see caveat above), ' +
+            'bolusPercent/bolusUnitsPerDay/bolusesPerDay/averageIndividualBolusUnits, ' +
+            'correctionBolusPercent/correctionBolusesPerDay, automaticBolusPercent/' +
+            'automaticBolusUnitsPerDay/automaticBolusCountPerDay, ' +
+            'otherBolusPercent/otherBolusUnitsPerDay (a catch-all bolus category, ' +
+            'distinct from correction/automatic/premixed), premixedPercent/' +
+            'premixedUnitsPerDay/otherPremixedPercent (premixed insulin is an MDI/pen ' +
+            'concept — fixed NPH/regular mixes — expect these null for a pump ' +
+            'account), bolusOverridePercent/bolusOverridesCount, penTotalDosesPerDay/' +
+            'manualInsulinDosesPerDay/otherTotalDosesPerDay/otherUnknownUnitsPerDay/' +
+            'totalOtherInsulinPerDay/totalPumpInsulinPerDay (dosing broken out by ' +
+            'delivery method — pen vs pump vs manually-logged), daysWithoutInsulin, ' +
+            'and three account-context flags, hasPen/hasPump (device types this ' +
+            'account has ever used — helps explain why the pen-specific fields above ' +
+            'may be null) and hasEditedDoses. showAutoBolusStats also comes back but ' +
+            'looks like a Glooko UI-display toggle rather than clinical data — treat ' +
+            'it with low confidence. Any field Glooko didn\'t populate for this ' +
+            'window comes back null, not zero. Returns breakdown: null (not an ' +
+            'error) if Glooko has nothing for this exact window.',
           annotations: { readOnlyHint: true },
           inputSchema: {
             start: z.string().describe(startDesc),
