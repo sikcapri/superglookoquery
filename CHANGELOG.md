@@ -97,6 +97,24 @@ summary, not a substitute for it.
   description, a device-neutral example) — reworded to be device-neutral
   or properly caveated, matching the pattern the codebase's own
   well-written tool descriptions already used elsewhere.
+- A schema-heal bug that would have violated `field_capability`'s own
+  documented monotonic guarantee: `store.js`'s version-mismatch path
+  dropped that table on ANY `SCHEMA_VERSION` bump, even ones unrelated to
+  it, so a future release could have caused the "new field detected"
+  notice to re-fire for every field an account has ever shown. Confirmed
+  with a real repro; `field_capability` is now excluded from that drop.
+- `get_chart_html`'s output embedded real data into a `<script>` block via
+  unescaped `JSON.stringify`, which doesn't escape `<` — a pass-through
+  Glooko string containing `</script` (e.g. a free-text basal program
+  name) could have broken out of the script block and injected raw HTML
+  into a page this project writes to disk and opens in the browser. Fixed
+  by escaping `<` (and U+2028/U+2029) before embedding.
+- Glooko login had no de-duplication for concurrent callers, unlike the
+  identical pattern already used elsewhere in this codebase — two of the
+  four live-fetch-only tools landing close together as the first Glooko
+  calls in a process would each perform their own separate login. Now
+  shares one in-flight login the same way `store.js`/`sync.js` already do
+  for their own equivalent races.
 
 ## [0.1.4] - 2026-09-11
 
