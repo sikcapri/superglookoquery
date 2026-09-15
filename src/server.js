@@ -685,7 +685,11 @@ server.registerTool(
       'Effective timestamps are plain wall clock time (device-local), not UTC; ' +
       'the per-segment "from" times are pump-schedule clock-hours.\n\n' +
       'Returns: a settings array, each entry with its effective timestamp, ' +
-      'DIA_hours, maxBasalRate, basalRateSchedule (a list of {from, ' +
+      'DIA_hours, maxBasalRate (or null, some accounts never populate this ' +
+      'key even though they do populate activeBasalProgram, they are ' +
+      'independent, not a fallback pair), activeBasalProgram (the name of the ' +
+      'currently active basal program/profile, or null if unavailable), ' +
+      'basalRateSchedule (a list of {from, ' +
       'unitsPerHour} time segments, or null if this device/account has never ' +
       'shown it), scheduledDailyBasalUnits (or null), the targetBg, isf and ' +
       'carbRatio profiles (each a list of {from, value} time segments), ' +

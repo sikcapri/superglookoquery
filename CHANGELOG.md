@@ -37,6 +37,11 @@ summary, not a substitute for it.
   different concept from this extension's own low/high boundaries used
   for time-in-range), both confirmed present in the same raw settings
   snapshot and never extracted before.
+- `get_settings_history` also now includes `activeBasalProgram` (the
+  currently active basal program/profile name). Found via real-account
+  QA: this account has `activeBasalProgram` but no `maxBasalRate` at all,
+  the two are independent fields, not a primary/fallback pair, so both
+  are now extracted with their own independent null-safety.
 
 ### Removed
 - Two genuinely dead code paths found via a systematic "is this exported

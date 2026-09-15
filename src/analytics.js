@@ -877,7 +877,14 @@ export function computeSummary(
   const settings = settingsHistory.map((s) => ({
     effective: s.activeTimestamp,
     DIA_hours: s.settings.generalSettings.activeInsulinTime,
-    maxBasalRate: s.settings.basalSettings.maxBasalRate,
+    maxBasalRate: s.settings.basalSettings.maxBasalRate ?? null,
+    // Confirmed 2026-09-15: this account's basalSettings has NO maxBasalRate
+    // key at all (the line above silently returns undefined for it), but
+    // DOES have activeBasalProgram — Glooko evidently structures this
+    // differently for at least some pump/app combinations. Exposed here so
+    // an account like this one isn't left with silent nulls where real
+    // device info exists.
+    activeBasalProgram: s.settings.basalSettings.activeBasalProgram ?? null,
     targetBg: s.settings.profilesBolus[0].targetBgSegments.data.map((sn) => ({
       from: formatHour(sn.segmentStart),
       value: toDisplay(sn.value, units),

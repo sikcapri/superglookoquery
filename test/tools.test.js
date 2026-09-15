@@ -229,6 +229,29 @@ test('computeSummary returns bgGoal fields null and cgmAlerts: null when genuine
   assert.equal(s.settings[0].cgmAlerts, null);
 });
 
+// Regression coverage for the 2026-09-15 discovery: this real account has
+// activeBasalProgram but NO maxBasalRate at all in basalSettings — the
+// opposite of what the original PodQuery fields assumed. Both must be
+// independently null-safe, not just the object as a whole.
+test('computeSummary extracts activeBasalProgram independently of maxBasalRate', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { activeBasalProgram: 'Standard' }, // no maxBasalRate key at all
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.settings[0].maxBasalRate, null);
+  assert.equal(s.settings[0].activeBasalProgram, 'Standard');
+});
+
 test('bucketTrend buckets by calendar granularity with sensible per-bucket fields', () => {
   const timeline = buildTimeline();
   const buckets = bucketTrend(timeline, THRESHOLDS, {
