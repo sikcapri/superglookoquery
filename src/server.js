@@ -1806,6 +1806,13 @@ const GATED_MODULES = [
             'verified against a real value sample — this project deliberately never ' +
             'inspects real account values during development. If precision matters ' +
             'for a decision, cross-check the interpretation against Glooko\'s own app.\n\n' +
+            'KNOWN DISCREPANCY (real-account QA, 2026-09-16): one CamAPS FX account\'s ' +
+            'scheduledBasalsSum for a 7-day window did not reconcile with that same ' +
+            'account\'s flat programmed basal rate from get_settings_history ' +
+            '(scheduledBasalsSum implied ~34.6 U/day; the programmed rate implied ' +
+            '~21.6 U/day) — a real, unresolved gap between the two, not necessarily ' +
+            'an error in either one. Do not assume these two figures reconcile; ' +
+            'report both if asked, rather than picking one as authoritative.\n\n' +
             'UNLIKE archive-backed tools, this makes a LIVE call to Glooko every time ' +
             '— same reason and same caveats as get_camaps_pump_mode_breakdown (slower, ' +
             'and a transient network/login error is possible here specifically).\n\n' +

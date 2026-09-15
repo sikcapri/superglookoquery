@@ -10,6 +10,21 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+### Fixed
+- `get_glucose_distribution` returned a full breakdown of zeros instead of
+  its documented `distribution: null` for a window Glooko has no real
+  distribution for, found via real-account QA the day after release.
+  Glooko returns every glucose-value field as literal `0` (not omitted or
+  null) alongside `hasPrimeDeviceData: false` in that case; 0 mmol/L is
+  never a real reading, so this is now correctly treated as absent.
+
+### Documentation
+- Added a known, unresolved discrepancy to `get_basal_bolus_breakdown`'s
+  caveats: one real account's `scheduledBasalsSum` for a 7-day window
+  (~34.6 U/day) didn't reconcile with that same account's flat programmed
+  basal rate from `get_settings_history` (~21.6 U/day). Recorded rather
+  than guessed at, per this project's own honesty-caveat standard.
+
 ## [0.2.0] - 2026-09-15
 
 ### Added

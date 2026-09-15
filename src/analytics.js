@@ -564,6 +564,12 @@ export function extractCamapsPumpModeBreakdown(stats) {
 // fetched — see this project's whole privacy design). Cross-check the
 // interpretation against Glooko's own app if precision matters for a
 // clinical decision.
+//
+// KNOWN DISCREPANCY (real-account QA, 2026-09-16): scheduledBasalsSum for a
+// real 7-day window (242.42, ~34.6 U/day) did not reconcile with that same
+// account's flat programmed basal rate from get_settings_history (~21.6
+// U/day) — a real, unresolved gap, not assumed to be an error in either
+// figure. Do not treat the two as required to match.
 export const BASAL_BOLUS_BREAKDOWN_KEYS = [
   'basalPercentage',
   'otherBasalPercentage',
@@ -710,17 +716,35 @@ export const GLUCOSE_DISTRIBUTION_KEYS = [
  */
 export function extractGlucoseDistribution(stats, units = 'mmol') {
   if (!stats) return null;
-  const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
-  const hasAny = GLUCOSE_DISTRIBUTION_KEYS.some((k) => isPopulated(stats[k]));
-  if (!hasAny) return null;
-  const abs = (v) => (v == null ? null : toDisplay(normaliseIncoming(v), units));
+  // Bug found via real-account QA 2026-09-16: for a window Glooko has no
+  // real distribution for, it returns EVERY glucose-value field (median,
+  // percentiles, averageBg, stdDev) as literal 0 rather than omitting them
+  // or sending null, alongside hasPrimeDeviceData: false. The original gate
+  // here (generic "any of these keys is non-null" — the same "0 counts as
+  // populated" rule that's correctly used for percentage/count fields
+  // elsewhere in this file) treated that as real data and returned a full
+  // breakdown of zeros, violating this function's own documented null
+  // contract. 0 mmol/L is never a real reading, so unlike the dosing
+  // breakdowns above, a genuine 0 here means absent, not "really zero".
+  const isRealGlucoseValue = (v) => v !== null && v !== undefined && !Number.isNaN(Number(v)) && v !== 0;
+  const glucoseValueKeys = [
+    'tenthPercentile', 'tewentyFifthPercentile', 'median',
+    'seventyFiftnPercentile', 'ninetiethPercentile', 'stdDev', 'averageBg',
+  ];
+  const hasRealData = glucoseValueKeys.some((k) => isRealGlucoseValue(stats[k]));
+  // hasPrimeDeviceData: false is Glooko's own explicit "no real device data
+  // for this window" signal, confirmed co-occurring with the all-zero case
+  // above — never let it, or a genuine 0 in a count field, alone imply real
+  // data when every glucose value is absent.
+  if (!hasRealData || stats.hasPrimeDeviceData === false) return null;
+  const abs = (v) => (v == null || v === 0 ? null : toDisplay(normaliseIncoming(v), units));
   return {
     tenthPercentile: abs(stats.tenthPercentile),
     twentyFifthPercentile: abs(stats.tewentyFifthPercentile),
     median: abs(stats.median),
     seventyFifthPercentile: abs(stats.seventyFiftnPercentile),
     ninetiethPercentile: abs(stats.ninetiethPercentile),
-    stdDev: stats.stdDev == null ? null : toDisplayDelta(normaliseIncomingDelta(stats.stdDev), units),
+    stdDev: (stats.stdDev == null || stats.stdDev === 0) ? null : toDisplayDelta(normaliseIncomingDelta(stats.stdDev), units),
     averageBg: abs(stats.averageBg),
     readingsPerDay: numOrNull(stats.readingsPerDay),
     incompleteReadings: numOrNull(stats.incompleteReadings),

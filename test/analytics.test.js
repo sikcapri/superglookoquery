@@ -249,6 +249,34 @@ test('extractGlucoseDistribution returns null when none of these fields are popu
   assert.equal(extractGlucoseDistribution(null), null);
 });
 
+// Regression coverage for a real bug found via real-account QA 2026-09-16:
+// for a window Glooko has no distribution for, it returns every glucose
+// field as literal 0 (not null/omitted) alongside hasPrimeDeviceData:
+// false, rather than the documented "distribution: null" contract. 0
+// mmol/L is never a real reading, so this must come back null, not a
+// breakdown of zeros.
+test('extractGlucoseDistribution returns null for the real all-zero/no-device-data case, not a breakdown of zeros', () => {
+  const stats = {
+    tenthPercentile: 0,
+    tewentyFifthPercentile: 0,
+    median: 0,
+    seventyFiftnPercentile: 0,
+    ninetiethPercentile: 0,
+    stdDev: 0,
+    averageBg: 0,
+    readingsPerDay: 0,
+    incompleteReadings: 0,
+    hasPrimeDeviceData: false,
+  };
+  assert.equal(extractGlucoseDistribution(stats), null);
+});
+
+test('extractGlucoseDistribution still returns real data when genuinely populated, even with hasPrimeDeviceData absent', () => {
+  const d = extractGlucoseDistribution({ median: 6.8, stdDev: 1.2 });
+  assert.equal(d.median, 6.8);
+  assert.equal(d.stdDev, 1.2);
+});
+
 test('extractMealLoggingStats returns the meal/carb counts when populated', () => {
   const stats = {
     carbsPerDay: 145.5,
