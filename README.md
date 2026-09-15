@@ -17,7 +17,7 @@
 > **This started as a fork of [Richard Hall's PodQuery](https://github.com/rilhia/podquery-mcp)** (MIT licensed), which was built around one specific setup: an Omnipod 5 syncing to Glooko. Credit to Richard for the original MCPB packaging and clinical-analysis core. What's different here: the ingestion layer no longer assumes a fixed set of fields belonging to one device. It looks at what your own account's data actually contains and builds its tool list from that. See [How device support actually works](#how-device-support-actually-works) below for the mechanics.
 
 > [!NOTE]
-> **Early days (v0.1.0).** Built and tested end to end against one real setup so far: a Ypsomed YpsoPump running CamAPS FX as the AID app, paired with a Libre 3+ CGM. Other combinations grow in as real accounts contribute data, not by guessing at fields nobody's verified.
+> **v0.2.0.** Still built and tested end to end against one real setup so far: a Ypsomed YpsoPump running CamAPS FX as the AID app, paired with a Libre 3+ CGM. Other combinations grow in as real accounts contribute data, not by guessing at fields nobody's verified.
 
 ---
 
