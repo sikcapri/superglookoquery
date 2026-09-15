@@ -668,6 +668,110 @@ export function extractBasalBolusBreakdown(stats) {
   };
 }
 
+// Confirmed present in the same `stats` (data2) blob as the breakdowns
+// above, via the same 2026-09-16 field_capability sweep. Glooko's own raw
+// field names carry two apparent typos, kept verbatim here as the literal
+// lookup keys since that's what the real response actually contains:
+// "tewentyFifthPercentile" (25th) and "seventyFiftnPercentile" (75th). The
+// OUTPUT keys below are spelled correctly; only the internal lookup matches
+// Glooko's typo'd source.
+export const GLUCOSE_DISTRIBUTION_KEYS = [
+  'tenthPercentile',
+  'tewentyFifthPercentile',
+  'median',
+  'seventyFiftnPercentile',
+  'ninetiethPercentile',
+  'stdDev',
+  'averageBg',
+  'readingsPerDay',
+  'incompleteReadings',
+  'hasPrimeDeviceData',
+];
+
+/**
+ * Pull Glooko's own glucose-distribution stats (a standard AGP-report-style
+ * percentile band, plus stdDev/averageBg and a couple of data-completeness
+ * flags) out of a raw `stats` (Glooko's data2) blob, or null if none of
+ * these fields are populated for this account/window. Same live-fetch-only
+ * caveat as the other stats extractors: never archived (range.js's
+ * getProcessedRange returns stats: null by design).
+ *
+ * This is genuinely NOT a duplicate of this project's own TIR/stdDev/CV
+ * calculation elsewhere (computeSummary, calculateHourly): those are
+ * computed from the raw archived CGM trace against the PATIENT's own
+ * configured thresholds; these are Glooko's own server-side aggregate,
+ * likely against Glooko's own fixed definitions. Expect the two to differ
+ * somewhat — that gap is itself informative, not a bug in either one.
+ *
+ * Percentiles/median/averageBg are absolute glucose values, normalised from
+ * the Glooko account's source unit and converted to the requested display
+ * unit, same as every other glucose value in this project. stdDev is a
+ * spread (delta), converted with the no-offset delta path like ISF.
+ */
+export function extractGlucoseDistribution(stats, units = 'mmol') {
+  if (!stats) return null;
+  const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
+  const hasAny = GLUCOSE_DISTRIBUTION_KEYS.some((k) => isPopulated(stats[k]));
+  if (!hasAny) return null;
+  const abs = (v) => (v == null ? null : toDisplay(normaliseIncoming(v), units));
+  return {
+    tenthPercentile: abs(stats.tenthPercentile),
+    twentyFifthPercentile: abs(stats.tewentyFifthPercentile),
+    median: abs(stats.median),
+    seventyFifthPercentile: abs(stats.seventyFiftnPercentile),
+    ninetiethPercentile: abs(stats.ninetiethPercentile),
+    stdDev: stats.stdDev == null ? null : toDisplayDelta(normaliseIncomingDelta(stats.stdDev), units),
+    averageBg: abs(stats.averageBg),
+    readingsPerDay: numOrNull(stats.readingsPerDay),
+    incompleteReadings: numOrNull(stats.incompleteReadings),
+    hasPrimeDeviceData: stats.hasPrimeDeviceData ?? null,
+  };
+}
+
+// Confirmed present in the same `stats` (data2) blob, same 2026-09-16
+// field_capability sweep. These are logging COUNTS (how many carb entries,
+// how many meals), not the nutrition-macro fields (caloriesPerMeal/
+// proteinPerMeal/fatPerMeal) also confirmed present in the same sweep —
+// those are wellness/nutrition tracking, a different Glooko feature area
+// entirely, and deliberately NOT promoted here; carb-counting is directly
+// tied to bolus dosing (carb ratio), which is squarely this project's scope.
+export const MEAL_LOGGING_KEYS = [
+  'carbsPerDay',
+  'carbEntriesPerDay',
+  'mealsPerDay',
+  'deviceCarbsPerDay',
+  'deviceCarbEntriesPerDay',
+  'deviceCarbSources',
+];
+
+/**
+ * Pull Glooko's own meal/carb-logging counts out of a raw `stats` (Glooko's
+ * data2) blob, or null if none of these fields are populated. Same
+ * live-fetch-only caveat as the other stats extractors.
+ *
+ * carbsPerDay/carbEntriesPerDay/mealsPerDay are ALL-SOURCE totals (any way a
+ * carb value reached Glooko); deviceCarbsPerDay/deviceCarbEntriesPerDay
+ * narrow that to entries that came from the device itself (as opposed to
+ * manually logged in the Glooko app) — the gap between the two is itself a
+ * measure of how much carb logging happens off-device. deviceCarbSources
+ * is left as Glooko's own raw value (its shape isn't independently
+ * confirmed) rather than guessed at.
+ */
+export function extractMealLoggingStats(stats) {
+  if (!stats) return null;
+  const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
+  const hasAny = MEAL_LOGGING_KEYS.some((k) => isPopulated(stats[k]));
+  if (!hasAny) return null;
+  return {
+    carbsPerDay: numOrNull(stats.carbsPerDay),
+    carbEntriesPerDay: numOrNull(stats.carbEntriesPerDay),
+    mealsPerDay: numOrNull(stats.mealsPerDay),
+    deviceCarbsPerDay: numOrNull(stats.deviceCarbsPerDay),
+    deviceCarbEntriesPerDay: numOrNull(stats.deviceCarbEntriesPerDay),
+    deviceCarbSources: stats.deviceCarbSources ?? null,
+  };
+}
+
 /**
  * Best-effort device model names from Glooko's device list (`data3.devices`),
  * one entry per physical device on the account. Confirmed 2026-09-09: unlike

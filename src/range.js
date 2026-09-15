@@ -32,6 +32,8 @@ import {
   extractDeviceEvents,
   extractCamapsPumpModeBreakdown,
   extractBasalBolusBreakdown,
+  extractGlucoseDistribution,
+  extractMealLoggingStats,
   extractDeviceNames,
 } from './analytics.js';
 import {
@@ -260,6 +262,37 @@ export async function fetchBasalBolusBreakdown(startISO, endISO) {
     recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
   }
   return extractBasalBolusBreakdown(raw.data2);
+}
+
+/**
+ * Live fetch of Glooko's own glucose-distribution stats (percentile band,
+ * stdDev, averageBg) for an exact window. Same not-archived caveat as the
+ * two fetchers above — this blob is never persisted, so every call
+ * re-fetches from Glooko. Unlike those two, this one carries real glucose
+ * values, so it needs the requested display unit to convert correctly.
+ */
+export async function fetchGlucoseDistribution(startISO, endISO, units = 'mmol') {
+  if (!glookoConfigured()) return null;
+  await ensureDbReady();
+  const raw = await fetchGlookoRange(startISO, endISO);
+  if (raw.data2) {
+    recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
+  }
+  return extractGlucoseDistribution(raw.data2, units);
+}
+
+/**
+ * Live fetch of Glooko's own meal/carb-logging counts for an exact window.
+ * Same not-archived caveat as the fetchers above.
+ */
+export async function fetchMealLoggingStats(startISO, endISO) {
+  if (!glookoConfigured()) return null;
+  await ensureDbReady();
+  const raw = await fetchGlookoRange(startISO, endISO);
+  if (raw.data2) {
+    recordFieldCapabilities('stats', raw.data2, Math.floor(Date.now() / 1000));
+  }
+  return extractMealLoggingStats(raw.data2);
 }
 
 /**

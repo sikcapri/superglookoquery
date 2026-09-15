@@ -6,6 +6,8 @@ import {
   summariseSplitBolusStats,
   extractCamapsPumpModeBreakdown,
   extractBasalBolusBreakdown,
+  extractGlucoseDistribution,
+  extractMealLoggingStats,
   extractDeviceNames,
   getActiveSettings,
 } from '../src/analytics.js';
@@ -204,6 +206,70 @@ test('extractBasalBolusBreakdown includes the expanded dosing/device-use fields 
   assert.equal(breakdown.hasPump, true);
   assert.equal(breakdown.hasEditedDoses, false);
   assert.equal(breakdown.showAutoBolusStats, true);
+});
+
+// Regression coverage for the 2026-09-16 sweep: extractGlucoseDistribution
+// reads Glooko's own AGP-style percentile band, converting glucose values
+// and un-typo-ing the two misspelled source keys into correctly-spelled
+// output fields.
+test('extractGlucoseDistribution returns the percentile band, converting glucose values', () => {
+  const stats = {
+    tenthPercentile: 4.5,
+    tewentyFifthPercentile: 5.5,
+    median: 7.0,
+    seventyFiftnPercentile: 9.0,
+    ninetiethPercentile: 11.0,
+    stdDev: 1.8,
+    averageBg: 7.2,
+    readingsPerDay: 288,
+    incompleteReadings: 2,
+    hasPrimeDeviceData: true,
+  };
+  const d = extractGlucoseDistribution(stats, 'mmol');
+  assert.equal(d.tenthPercentile, 4.5);
+  assert.equal(d.twentyFifthPercentile, 5.5);
+  assert.equal(d.median, 7.0);
+  assert.equal(d.seventyFifthPercentile, 9.0);
+  assert.equal(d.ninetiethPercentile, 11.0);
+  assert.equal(d.stdDev, 1.8);
+  assert.equal(d.averageBg, 7.2);
+  assert.equal(d.readingsPerDay, 288);
+  assert.equal(d.incompleteReadings, 2);
+  assert.equal(d.hasPrimeDeviceData, true);
+});
+
+test('extractGlucoseDistribution converts glucose values to mg/dL when requested', () => {
+  const d = extractGlucoseDistribution({ median: 7.0, stdDev: 1.0 }, 'mgdl');
+  assert.ok(Math.abs(d.median - 126) < 1, `median should convert to mg/dL, got ${d.median}`);
+  assert.ok(Math.abs(d.stdDev - 18) < 1, `stdDev should convert to mg/dL, got ${d.stdDev}`);
+});
+
+test('extractGlucoseDistribution returns null when none of these fields are populated', () => {
+  assert.equal(extractGlucoseDistribution({ basalPercentage: 55 }), null);
+  assert.equal(extractGlucoseDistribution(null), null);
+});
+
+test('extractMealLoggingStats returns the meal/carb counts when populated', () => {
+  const stats = {
+    carbsPerDay: 145.5,
+    carbEntriesPerDay: 3.2,
+    mealsPerDay: 3,
+    deviceCarbsPerDay: 120,
+    deviceCarbEntriesPerDay: 2.5,
+    deviceCarbSources: ['pump'],
+  };
+  const m = extractMealLoggingStats(stats);
+  assert.equal(m.carbsPerDay, 145.5);
+  assert.equal(m.carbEntriesPerDay, 3.2);
+  assert.equal(m.mealsPerDay, 3);
+  assert.equal(m.deviceCarbsPerDay, 120);
+  assert.equal(m.deviceCarbEntriesPerDay, 2.5);
+  assert.deepEqual(m.deviceCarbSources, ['pump']);
+});
+
+test('extractMealLoggingStats returns null when none of these fields are populated', () => {
+  assert.equal(extractMealLoggingStats({ basalPercentage: 55 }), null);
+  assert.equal(extractMealLoggingStats(null), null);
 });
 
 test('extractBasalBolusBreakdown returns null when none of these fields are populated', () => {

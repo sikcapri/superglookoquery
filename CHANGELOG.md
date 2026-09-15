@@ -56,6 +56,25 @@ summary, not a substitute for it.
   hadn't accounted for), and a few account-context flags (`hasPen`,
   `hasPump`, `hasEditedDoses`). All existing fields keep their exact same
   names and values; this is a pure addition.
+- `get_glucose_distribution`: a new capability-gated tool exposing
+  Glooko's own AGP-report-style glucose percentile band (10th/25th/
+  median/75th/90th) plus stdDev and averageBg, found in the same sweep.
+  Genuinely not a duplicate of `get_diabetes_summary`'s own TIR/stdDev/CV
+  (which use the patient's own configured thresholds against the raw
+  archive, not Glooko's fixed definitions).
+- `get_meal_logging_stats`: a new capability-gated tool exposing Glooko's
+  own meal/carb-entry counts (carbsPerDay, carbEntriesPerDay, mealsPerDay,
+  and the device-sourced-only subset), also found in the same sweep.
+- `get_basal_bolus_breakdown` was itself missing from the clinical
+  auditor persona prompt's own tool list since the day it shipped — found
+  as a byproduct of adding the two new tools above alongside it.
+
+### Scope note
+- The same sweep also confirmed ~15 more real `stats` fields covering
+  blood pressure, weight, exercise, and full nutrition macros
+  (calories/protein/fat per meal). These are a different Glooko feature
+  area entirely (general wellness tracking, not diabetes device data) and
+  were deliberately left unpromoted — out of scope for this project.
 
 ### Removed
 - Two genuinely dead code paths found via a systematic "is this exported

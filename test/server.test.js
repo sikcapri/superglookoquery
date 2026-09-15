@@ -50,6 +50,32 @@ test('the basal/bolus breakdown module does NOT register for an account that has
   assert.ok(!srv.registered.includes('get_basal_bolus_breakdown'), 'must genuinely not appear, not appear-and-error');
 });
 
+test('the glucose distribution module registers once its capability is confirmed', async () => {
+  recordFieldCapabilities('stats', { median: 6.8 }, 12345);
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(srv.registered.includes('get_glucose_distribution'));
+});
+
+test('the glucose distribution module does NOT register for an account that has never shown the field', async () => {
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(!srv.registered.includes('get_glucose_distribution'), 'must genuinely not appear, not appear-and-error');
+});
+
+test('the meal logging stats module registers once its capability is confirmed', async () => {
+  recordFieldCapabilities('stats', { carbsPerDay: 150 }, 12345);
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(srv.registered.includes('get_meal_logging_stats'));
+});
+
+test('the meal logging stats module does NOT register for an account that has never shown the field', async () => {
+  const srv = fakeServer();
+  await registerCapabilityGatedModules(srv);
+  assert.ok(!srv.registered.includes('get_meal_logging_stats'), 'must genuinely not appear, not appear-and-error');
+});
+
 test('an unrelated confirmed capability does not satisfy the CamAPS module\'s requirement', async () => {
   recordFieldCapabilities('stats', { someOtherStatField: 1 }, 12345);
   const srv = fakeServer();

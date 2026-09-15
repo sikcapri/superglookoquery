@@ -53,6 +53,8 @@ import {
   CAPS,
   fetchCamapsPumpModeBreakdown,
   fetchBasalBolusBreakdown,
+  fetchGlucoseDistribution,
+  fetchMealLoggingStats,
 } from './range.js';
 import { resolveChartsDir } from './paths.js';
 import { ensureDbReady, getFieldCapabilities, takeNewlyConfirmedCapabilities } from './store.js';
@@ -118,20 +120,18 @@ function errorResult(message) {
   };
 }
 
-// A FACTORY, not a singleton. Each transport (each stdio process, or each HTTP
-// session) needs its OWN McpServer: the SDK forbids connecting one server to
-// more than one transport. createServer() builds a fully-registered server.
-export function createServer() {
-const server = new McpServer({
-  name: 'superglookoquery',
-  version: '1.0.0',
-});
-
 // --- Glucose unit & boundary defaults -------------------------------------
 // The user sets their preferred unit and target boundaries ONCE in the
 // environment (.env). Tools then use those by default. The per-call units/
 // lower/upper parameters are OPTIONAL overrides: omit them to use the
 // configured defaults, or pass them for a one-off (e.g. "time under 4.5").
+//
+// Module-level (not inside createServer()) since 2026-09-16: GATED_MODULES
+// is also module-level, defined after createServer(), and its first
+// unit-converting module (glucose_distribution) needs unitsSchema/
+// resolveThresholdInputs too. Moving these out here doesn't change
+// createServer()'s own tools at all -- they still close over the exact same
+// bindings, just from the enclosing module scope instead of their own.
 const ENV_UNITS = (() => {
   const u = (process.env.OMNI_UNITS || 'mmol').trim().toLowerCase();
   return u === 'mgdl' ? 'mgdl' : 'mmol'; // anything unrecognised -> mmol
@@ -200,6 +200,14 @@ const upperSchema = z
       'only to override for this one call.'
   );
 
+// A FACTORY, not a singleton. Each transport (each stdio process, or each HTTP
+// session) needs its OWN McpServer: the SDK forbids connecting one server to
+// more than one transport. createServer() builds a fully-registered server.
+export function createServer() {
+const server = new McpServer({
+  name: 'superglookoquery',
+  version: '1.0.0',
+});
 
 // --- get_chart_html point budget -------------------------------------------
 // get_chart_html writes its page straight to a file and opens it in the
@@ -1835,6 +1843,110 @@ const GATED_MODULES = [
             const e = assertIsoDate(end, 'end');
             const breakdown = await fetchBasalBolusBreakdown(s, e);
             return jsonResult({ window: { start: s, end: e }, breakdown });
+          } catch (err) {
+            return errorResult(err.message);
+          }
+        }
+      );
+    },
+  },
+  {
+    // Confirmed present in the same account's 'stats' response, via the
+    // same 2026-09-16 field_capability sweep that expanded
+    // basal_bolus_breakdown above. Gated on 'median' rather than something
+    // dosing-related since this module is glucose-distribution-specific,
+    // not insulin-specific — an account could plausibly have one family of
+    // stats fields populated without the other.
+    name: 'glucose_distribution',
+    requires: [{ category: 'stats', fieldName: 'median' }],
+    register: (srv) => {
+      srv.registerTool(
+        'get_glucose_distribution',
+        {
+          title: 'Glucose distribution (AGP-style percentiles)',
+          description:
+            'Glooko\'s own glucose-distribution stats for the window: a standard ' +
+            'AGP-report-style percentile band (10th/25th/median/75th/90th), plus ' +
+            'stdDev, averageBg, and a couple of data-completeness flags.\n\n' +
+            'This is NOT a duplicate of get_diabetes_summary\'s own TIR/stdDev/CV — ' +
+            'those are computed from the raw archived CGM trace against the ' +
+            'patient\'s own configured thresholds; these percentiles are Glooko\'s ' +
+            'own server-side aggregate, likely against Glooko\'s own fixed ' +
+            'definitions. Expect the two to differ somewhat — that gap is itself ' +
+            'informative (e.g. a wide gap between this stdDev and the archive-based ' +
+            'one is worth mentioning), not a bug in either one.\n\n' +
+            'UNLIKE archive-backed tools, this makes a LIVE call to Glooko every ' +
+            'time — same reason and caveats as get_camaps_pump_mode_breakdown.\n\n' +
+            'Returns: window, unit, and distribution with tenthPercentile/' +
+            'twentyFifthPercentile/median/seventyFifthPercentile/ninetiethPercentile ' +
+            '(all in the configured unit), stdDev (a spread, converted with no ' +
+            'offset), averageBg, readingsPerDay, incompleteReadings, and ' +
+            'hasPrimeDeviceData. Any field Glooko didn\'t populate comes back null. ' +
+            'Returns distribution: null (not an error) if Glooko has nothing for ' +
+            'this exact window.',
+          annotations: { readOnlyHint: true },
+          inputSchema: {
+            start: z.string().describe(startDesc),
+            end: z.string().describe(endDesc),
+            units: unitsSchema,
+          },
+        },
+        async ({ start, end, units: unitsIn }) => {
+          try {
+            const s = assertIsoDate(start, 'start');
+            const e = assertIsoDate(end, 'end');
+            const { units } = resolveThresholdInputs({ units: unitsIn });
+            const distribution = await fetchGlucoseDistribution(s, e, units);
+            return jsonResult({
+              window: { start: s, end: e },
+              unit: units === 'mgdl' ? 'mg/dL' : 'mmol/L',
+              distribution,
+            });
+          } catch (err) {
+            return errorResult(err.message);
+          }
+        }
+      );
+    },
+  },
+  {
+    // Same 2026-09-16 field_capability sweep as glucose_distribution above.
+    // Gated on 'carbsPerDay' rather than a dosing/glucose field since an
+    // account could plausibly have this family populated independently.
+    name: 'meal_logging_stats',
+    requires: [{ category: 'stats', fieldName: 'carbsPerDay' }],
+    register: (srv) => {
+      srv.registerTool(
+        'get_meal_logging_stats',
+        {
+          title: 'Meal/carb-logging counts',
+          description:
+            'Glooko\'s own meal and carb-entry counts for the window: how many ' +
+            'carbs were logged per day, how many separate carb entries and meals ' +
+            'that represents, and how much of it came from the device itself versus ' +
+            'being logged manually in the Glooko app.\n\n' +
+            'UNLIKE archive-backed tools, this makes a LIVE call to Glooko every ' +
+            'time — same reason and caveats as get_camaps_pump_mode_breakdown.\n\n' +
+            'Returns: window, and stats with carbsPerDay/carbEntriesPerDay/' +
+            'mealsPerDay (all-source totals — however the carb value reached ' +
+            'Glooko), deviceCarbsPerDay/deviceCarbEntriesPerDay (the subset that ' +
+            'came from the device itself — the gap against the all-source totals ' +
+            'is itself a measure of off-device logging), and deviceCarbSources ' +
+            '(Glooko\'s own raw value, shape not independently confirmed). Any ' +
+            'field Glooko didn\'t populate comes back null. Returns stats: null ' +
+            '(not an error) if Glooko has nothing for this exact window.',
+          annotations: { readOnlyHint: true },
+          inputSchema: {
+            start: z.string().describe(startDesc),
+            end: z.string().describe(endDesc),
+          },
+        },
+        async ({ start, end }) => {
+          try {
+            const s = assertIsoDate(start, 'start');
+            const e = assertIsoDate(end, 'end');
+            const stats = await fetchMealLoggingStats(s, e);
+            return jsonResult({ window: { start: s, end: e }, stats });
           } catch (err) {
             return errorResult(err.message);
           }
