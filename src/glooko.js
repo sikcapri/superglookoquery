@@ -38,6 +38,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Module-scoped session cache. Lives for the life of the process.
 let session = null;
 
+// In-flight login promise, so concurrent callers share ONE login instead of
+// each starting their own (same pattern as store.js's ensureSqlJsLoaded and
+// sync.js's withSyncLock). Real gap this closes: the four live-fetch-only
+// tools (get_camaps_pump_mode_breakdown, get_basal_bolus_breakdown,
+// get_glucose_distribution, get_meal_logging_stats) all call
+// fetchGlookoRange directly, bypassing sync.js's withSyncLock entirely (they
+// have nothing to archive/sync). If two of them are the first calls to touch
+// Glooko in a process (session still null) and land close together -- e.g.
+// one compound question prompting two of these tool calls back to back --
+// both would see `!session` and each perform its own full login, hammering
+// Glooko's login endpoint for no reason and racing to overwrite `session`.
+let loginInFlight = null;
+
 function getCredentials() {
   const email = process.env.GLOOKO_EMAIL;
   const password = process.env.GLOOKO_PASSWORD;
@@ -234,7 +247,7 @@ export async function fetchGlookoRange(startDate, endDate) {
 
   // Ensure we have a session to start with.
   if (!session) {
-    session = await loginWithReloginCap(email, password, () => reloginsUsed++, () => reloginsUsed);
+    session = await dedupedLogin(email, password);
   }
 
   while (true) {
@@ -261,7 +274,7 @@ export async function fetchGlookoRange(startDate, endDate) {
         }
         session = null;
         reloginsUsed++;
-        session = await freshLogin(email, password);
+        session = await dedupedLogin(email, password);
         // Loop and retry the fetch on the new session. Reset transient counter,
         // since this is effectively a fresh start on a good session.
         transientAttempt = 0;
@@ -277,7 +290,7 @@ export async function fetchGlookoRange(startDate, endDate) {
         if (reloginsUsed < MAX_RELOGIN_ATTEMPTS) {
           session = null;
           reloginsUsed++;
-          session = await freshLogin(email, password);
+          session = await dedupedLogin(email, password);
           transientAttempt = 0;
           continue;
         }
@@ -306,11 +319,25 @@ async function freshLogin(email, password) {
   }
 }
 
-async function loginWithReloginCap(email, password) {
-  return freshLogin(email, password);
+/**
+ * Login, shared across any calls that arrive while one is already in flight
+ * (see loginInFlight's own comment above for the real race this closes).
+ * Every caller awaits the exact same promise and gets the exact same
+ * resulting session; the slot clears once that attempt settles (success or
+ * failure) so the NEXT call that needs a login starts a fresh attempt
+ * rather than replaying a stale rejection.
+ */
+function dedupedLogin(email, password) {
+  if (!loginInFlight) {
+    loginInFlight = freshLogin(email, password).finally(() => {
+      loginInFlight = null;
+    });
+  }
+  return loginInFlight;
 }
 
 // Exposed for tests: reset the module session.
 export function _resetSession() {
   session = null;
+  loginInFlight = null;
 }

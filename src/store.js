@@ -340,11 +340,25 @@ function openArchive(bytes) {
   const preStored = db.prepare('PRAGMA user_version').get();
   const storedVersion = preStored ? Object.values(preStored)[0] : 0;
   if (storedVersion > 0 && storedVersion < SCHEMA_VERSION) {
+    // field_capability is DELIBERATELY excluded from this list. Its own
+    // schema (category/field_name/first_seen_epoch/prompted) hasn't changed
+    // since it was introduced at SCHEMA_VERSION 7, and it is explicitly
+    // documented as monotonic -- "a capability once confirmed can never be
+    // silently revoked" (see the version-7 comment above and DESIGN.md
+    // section 2a). Dropping it here on ANY version bump, even one entirely
+    // unrelated to capabilities (e.g. a future basal_state fix), would
+    // silently violate that guarantee: the next re-ingest repopulates every
+    // row from scratch with prompted=0, so takeNewlyConfirmedCapabilities()
+    // (wired into get_diabetes_summary) would re-fire the "new field
+    // detected" notice for every field this account has EVER shown, even
+    // ones the user was already told about long ago. Confirmed via a real
+    // repro (stamp an older user_version, reopen through this exact path)
+    // before this exclusion was added.
     db.exec(
       'DROP TABLE IF EXISTS cgm; DROP TABLE IF EXISTS bolus; DROP TABLE IF EXISTS settings; ' +
         'DROP TABLE IF EXISTS daily_insulin; DROP TABLE IF EXISTS basal_state; ' +
         'DROP TABLE IF EXISTS device_event; DROP TABLE IF EXISTS day_status; ' +
-        'DROP TABLE IF EXISTS sync_state; DROP TABLE IF EXISTS field_capability;'
+        'DROP TABLE IF EXISTS sync_state;'
     );
   }
   db.exec(SCHEMA_SQL);

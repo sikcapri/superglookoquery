@@ -255,7 +255,6 @@ const HTML_HEAD = `<!doctype html>
 <script>
 var CHART_DATA = `;
 
-// eslint-disable-next-line max-len
 const HTML_TAIL = `;
 (function () {
   'use strict';
@@ -1332,6 +1331,33 @@ const HTML_TAIL = `;
 `;
 
 /**
+ * The chart data blob is spliced into the page as
+ * `var CHART_DATA = <this>;` inside a raw <script> block (see HTML_HEAD/
+ * HTML_TAIL above). JSON.stringify() does NOT escape "<", so a string value
+ * anywhere in the data that happens to contain the literal sequence
+ * "</script" (case-insensitive; browsers match tag names case-insensitively)
+ * would close the script block early right there, turning everything after
+ * it into raw, unescaped HTML the page never intended to render — a classic
+ * JSON-in-<script>-tag injection. Most of this project's chart data is
+ * numeric, but `daySummaries` embeds full computeSummary() output, which
+ * includes real pass-through strings from Glooko (e.g. settings[].
+ * activeBasalProgram -- a basal PROGRAM NAME, which some pumps let a patient
+ * or clinic set to arbitrary free text). Escaping every "<" as its unicode
+ * escape closes off the entire class at once (the standard fix used by
+ * libraries like `serialize-javascript`) — "<" can never appear in the
+ * output, so "</script" specifically never can either, and the escape is a
+ * valid no-op inside a JS string literal either way. U+2028/U+2029 are also
+ * escaped: valid in a JSON string but not always valid unescaped inside a
+ * bare JS string literal.
+ */
+function escapeForInlineScript(json) {
+  return json
+    .replace(/</g, '\\u003c')
+    .split(String.fromCharCode(0x2028)).join('\\u2028')
+    .split(String.fromCharCode(0x2029)).join('\\u2029');
+}
+
+/**
  * Builds the HTML page for the get_chart_html tool: the fixed shell
  * (HTML_HEAD/HTML_TAIL, identical on every call) with one small JSON data
  * blob spliced in. The server does no per-point pixel/path computation here
@@ -1410,5 +1436,5 @@ export function renderChartHtml(p) {
     windowEnd: window.end,
   };
 
-  return HTML_HEAD + JSON.stringify(data) + HTML_TAIL;
+  return HTML_HEAD + escapeForInlineScript(JSON.stringify(data)) + HTML_TAIL;
 }
