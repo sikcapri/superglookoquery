@@ -10,6 +10,8 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-15
+
 ### Added
 - `takeNewlyConfirmedCapabilities()` (built and tested long ago per
   DESIGN.md 2a, but never actually called from anywhere) is now wired into
