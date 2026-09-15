@@ -252,6 +252,51 @@ test('computeSummary extracts activeBasalProgram independently of maxBasalRate',
   assert.equal(s.settings[0].activeBasalProgram, 'Standard');
 });
 
+// Regression coverage for the 2026-09-15 sweep: targetBgSegments' own data
+// rows carry valueLow/valueHigh siblings next to value in the real raw
+// settings snapshot — same "ignores a real sibling" gap as every other fix
+// this session, found by shape-inspecting the live archive.
+test('computeSummary includes valueLow/valueHigh on targetBg segments when present', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: {
+          data: [{ segmentStart: 0, value: 6.1, valueLow: 5.5, valueHigh: 7.0 }],
+        },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.settings[0].targetBg[0].value, 6.1);
+  assert.equal(s.settings[0].targetBg[0].valueLow, 5.5);
+  assert.equal(s.settings[0].targetBg[0].valueHigh, 7.0);
+});
+
+test('computeSummary omits valueLow/valueHigh on targetBg segments when the source never had them', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal('valueLow' in s.settings[0].targetBg[0], false);
+  assert.equal('valueHigh' in s.settings[0].targetBg[0], false);
+});
+
 test('bucketTrend buckets by calendar granularity with sensible per-bucket fields', () => {
   const timeline = buildTimeline();
   const buckets = bucketTrend(timeline, THRESHOLDS, {

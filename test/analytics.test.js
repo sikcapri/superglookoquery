@@ -7,6 +7,7 @@ import {
   extractCamapsPumpModeBreakdown,
   extractBasalBolusBreakdown,
   extractDeviceNames,
+  getActiveSettings,
 } from '../src/analytics.js';
 
 // Regression coverage for the SCHEMA_VERSION 8 -> 9 bug found 2026-09-09: the
@@ -206,4 +207,40 @@ test('processUnifiedGlookoData + range.js-style backfill: a CGM point with no pe
     }
   }
   assert.equal(timeline[0].extra.deviceName, 'FreeStyle Libre 3');
+});
+
+// Regression coverage for the 2026-09-15 sweep: getActiveSettings normalises
+// targetBgSegments' value from a mg/dL-source Glooko account to canonical
+// mmol at ingest, but until this fix left the sibling valueLow/valueHigh
+// fields untouched -- they'd have shipped in raw mg/dL while value read as
+// mmol from the exact same segment.
+test('getActiveSettings normalises targetBg valueLow/valueHigh alongside value for a mg/dL-source account', () => {
+  const prevUnit = process.env.GLOOKO_GLUCOSE_UNIT;
+  process.env.GLOOKO_GLUCOSE_UNIT = 'mgdl';
+  try {
+    const json = {
+      deviceSettings: {
+        pumps: {
+          guid1: {
+            '2026-01-01T00:00:00.000Z': {
+              profilesBolus: [{
+                targetBgSegments: {
+                  data: [{ segmentStart: 0, value: 110, valueLow: 100, valueHigh: 126 }],
+                },
+                isfSegments: { data: [{ segmentStart: 0, value: 50 }] },
+              }],
+            },
+          },
+        },
+      },
+    };
+    const history = getActiveSettings(json, '2026-01-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z');
+    const sn = history[0].settings.profilesBolus[0].targetBgSegments.data[0];
+    assert.ok(Math.abs(sn.value - 6.1) < 0.01, `value should be normalised to mmol, got ${sn.value}`);
+    assert.ok(Math.abs(sn.valueLow - 5.55) < 0.01, `valueLow should be normalised to mmol, got ${sn.valueLow}`);
+    assert.ok(Math.abs(sn.valueHigh - 7.0) < 0.01, `valueHigh should be normalised to mmol, got ${sn.valueHigh}`);
+  } finally {
+    if (prevUnit === undefined) delete process.env.GLOOKO_GLUCOSE_UNIT;
+    else process.env.GLOOKO_GLUCOSE_UNIT = prevUnit;
+  }
 });

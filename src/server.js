@@ -692,7 +692,11 @@ server.registerTool(
       'basalRateSchedule (a list of {from, ' +
       'unitsPerHour} time segments, or null if this device/account has never ' +
       'shown it), scheduledDailyBasalUnits (or null), the targetBg, isf and ' +
-      'carbRatio profiles (each a list of {from, value} time segments), ' +
+      'carbRatio profiles (each a list of {from, value} time segments; a ' +
+      'targetBg segment may also carry valueLow/valueHigh alongside value ' +
+      'when the device reports a range rather than a single point — present ' +
+      'only when the source data actually has them, no assumed relationship ' +
+      'between value and the low/high pair), ' +
       'bgCorrectionThreshold (same shape, or null if this device/account has ' +
       'never shown it) — a separate correction-trigger level distinct from the ' +
       'ordinary target range, where the device populates it — plus bgGoal ' +

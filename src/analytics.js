@@ -176,6 +176,16 @@ export function getActiveSettings(json, startDate, endDate) {
           data: p.targetBgSegments.data.map((sn) => ({
             ...sn,
             value: normaliseIncoming(sn.value, srcUnit),
+            // valueLow/valueHigh are glucose values just like value, and need
+            // the same mg/dL-source normalisation at ingest — found while
+            // wiring up their extraction below, this block previously only
+            // normalised value and would have left them in raw source units.
+            ...(sn.valueLow != null
+              ? { valueLow: normaliseIncoming(sn.valueLow, srcUnit) }
+              : {}),
+            ...(sn.valueHigh != null
+              ? { valueHigh: normaliseIncoming(sn.valueHigh, srcUnit) }
+              : {}),
           })),
         };
       }
@@ -885,9 +895,20 @@ export function computeSummary(
     // an account like this one isn't left with silent nulls where real
     // device info exists.
     activeBasalProgram: s.settings.basalSettings.activeBasalProgram ?? null,
+    // targetBgSegments' own data rows carry valueLow/valueHigh siblings next
+    // to value, confirmed 2026-09-15 in the real raw settings snapshot —
+    // same "reads part of the object, ignores real siblings" gap as the
+    // other fields found this session. Included only when present (older
+    // snapshots or other accounts may only ever populate value); this
+    // project has not independently confirmed whether value is a derived
+    // midpoint of the low/high range or an unrelated field, so treat all
+    // three as Glooko's own reported numbers rather than assuming a
+    // relationship between them.
     targetBg: s.settings.profilesBolus[0].targetBgSegments.data.map((sn) => ({
       from: formatHour(sn.segmentStart),
       value: toDisplay(sn.value, units),
+      ...(sn.valueLow != null ? { valueLow: toDisplay(sn.valueLow, units) } : {}),
+      ...(sn.valueHigh != null ? { valueHigh: toDisplay(sn.valueHigh, units) } : {}),
     })),
     isf: s.settings.profilesBolus[0].isfSegments.data.map((sn) => ({
       from: formatHour(sn.segmentStart),

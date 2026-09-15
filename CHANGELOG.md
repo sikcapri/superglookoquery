@@ -42,6 +42,11 @@ summary, not a substitute for it.
   QA: this account has `activeBasalProgram` but no `maxBasalRate` at all,
   the two are independent fields, not a primary/fallback pair, so both
   are now extracted with their own independent null-safety.
+- `get_settings_history`'s `targetBg` segments now include `valueLow`/
+  `valueHigh` alongside `value` when the device populates them: a
+  structural sibling gap found via a shape-only inspection sweep of the
+  real archive's raw settings JSON, same "reads part of the object,
+  ignores real siblings" pattern as this session's other fixes.
 
 ### Removed
 - Two genuinely dead code paths found via a systematic "is this exported
