@@ -630,6 +630,21 @@ export function extractBasalBolusBreakdown(stats) {
   const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
   const hasAny = BASAL_BOLUS_BREAKDOWN_KEYS.some((k) => isPopulated(stats[k]));
   if (!hasAny) return null;
+  // Bug found via a real-account live probe 2026-09-16 (same root cause as
+  // extractGlucoseDistribution's zero-vs-null fix): for a window with NO
+  // real device activity at all, Glooko still returns every field here as
+  // a present, non-null 0 rather than omitting them -- so the check above
+  // alone can't tell "a real 0%" from "nothing happened in this window."
+  // hasPump was the one flag confirmed (via that same live probe) to
+  // actually differ between a real-activity window and a genuinely empty
+  // one; hasPen didn't move in that test, so it's included defensively
+  // (both false = no device-linked activity of either kind) rather than
+  // relied on alone. Unlike extractGlucoseDistribution, individual 0
+  // values here are NOT overridden — 0% correction bolus, 0 pen doses etc.
+  // are all real, legitimate answers in a window that DOES have activity;
+  // this only gates the all-or-nothing "is there anything here at all"
+  // decision, one level up.
+  if (stats.hasPump === false && stats.hasPen === false) return null;
   return {
     basalPercent: numOrNull(stats.basalPercentage),
     otherBasalPercent: numOrNull(stats.otherBasalPercentage),
@@ -732,10 +747,15 @@ export function extractGlucoseDistribution(stats, units = 'mmol') {
     'seventyFiftnPercentile', 'ninetiethPercentile', 'stdDev', 'averageBg',
   ];
   const hasRealData = glucoseValueKeys.some((k) => isRealGlucoseValue(stats[k]));
-  // hasPrimeDeviceData: false is Glooko's own explicit "no real device data
-  // for this window" signal, confirmed co-occurring with the all-zero case
-  // above — never let it, or a genuine 0 in a count field, alone imply real
-  // data when every glucose value is absent.
+  // hasPrimeDeviceData: false co-occurred with the original all-zero bug
+  // report, so it's kept as a defensive extra check — but a follow-up live
+  // probe (2026-09-16, comparing a real window against a genuinely empty
+  // one on the same account) found this flag identical in BOTH, suggesting
+  // it may be an account-level attribute rather than a per-window "is there
+  // data here" signal. The real, load-bearing protection is the 0-means-
+  // absent rule above (0 mmol/L can never be a genuine reading, in any
+  // window, for any account) — this flag is a secondary check, not relied
+  // on alone.
   if (!hasRealData || stats.hasPrimeDeviceData === false) return null;
   const abs = (v) => (v == null || v === 0 ? null : toDisplay(normaliseIncoming(v), units));
   return {
@@ -786,6 +806,16 @@ export function extractMealLoggingStats(stats) {
   const isPopulated = (v) => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
   const hasAny = MEAL_LOGGING_KEYS.some((k) => isPopulated(stats[k]));
   if (!hasAny) return null;
+  // Same bug/fix as extractBasalBolusBreakdown above, found in the same
+  // 2026-09-16 live probe: for a genuinely empty window, Glooko returns
+  // every one of these as a present 0 rather than omitting them. hasPump/
+  // hasPen aren't part of MEAL_LOGGING_KEYS' own output, but they live in
+  // the same raw stats object this function reads, and hasPump was
+  // confirmed to actually differ between a real-activity window and an
+  // empty one. Individual 0 values (e.g. mealsPerDay: 0 in a window that
+  // DOES have real carb entries) are left untouched — this only gates the
+  // all-or-nothing decision.
+  if (stats.hasPump === false && stats.hasPen === false) return null;
   return {
     carbsPerDay: numOrNull(stats.carbsPerDay),
     carbEntriesPerDay: numOrNull(stats.carbEntriesPerDay),

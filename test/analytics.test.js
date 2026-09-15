@@ -300,9 +300,56 @@ test('extractMealLoggingStats returns null when none of these fields are populat
   assert.equal(extractMealLoggingStats(null), null);
 });
 
+// Regression coverage for a real bug found via a live-account probe
+// 2026-09-16 (see extractGlucoseDistribution's own zero-vs-null fix,
+// same root cause): for a genuinely empty window (no pump or pen activity
+// at all), Glooko still returns every one of these fields as a present 0
+// rather than omitting them or returning null. hasPump was confirmed to
+// actually differ between a real window and an empty one on the same
+// account; hasPen did not move in that same test, hence checking both.
+test('extractMealLoggingStats returns null for a genuinely empty window (hasPump/hasPen both false), not a breakdown of zeros', () => {
+  const stats = {
+    carbsPerDay: 0, carbEntriesPerDay: 0, mealsPerDay: 0,
+    deviceCarbsPerDay: 0, deviceCarbEntriesPerDay: 0, deviceCarbSources: [],
+    hasPump: false, hasPen: false,
+  };
+  assert.equal(extractMealLoggingStats(stats), null);
+});
+
+test('extractMealLoggingStats still returns real data (including a genuine 0 in one field) when hasPump is true', () => {
+  const stats = {
+    carbsPerDay: 188.1, carbEntriesPerDay: 4, mealsPerDay: 0,
+    deviceCarbsPerDay: 188.1, deviceCarbEntriesPerDay: 4, deviceCarbSources: ['pump'],
+    hasPump: true, hasPen: false,
+  };
+  const m = extractMealLoggingStats(stats);
+  assert.equal(m.carbsPerDay, 188.1);
+  assert.equal(m.mealsPerDay, 0, 'a real 0 in one field must survive when the window genuinely has activity');
+});
+
 test('extractBasalBolusBreakdown returns null when none of these fields are populated', () => {
   assert.equal(extractBasalBolusBreakdown({ stdDev: 1.2, median: 7.0 }), null);
   assert.equal(extractBasalBolusBreakdown(null), null);
+});
+
+// Same real bug/fix as extractMealLoggingStats above, found in the same
+// live probe against the same account.
+test('extractBasalBolusBreakdown returns null for a genuinely empty window (hasPump/hasPen both false), not a breakdown of zeros', () => {
+  const stats = {
+    basalPercentage: 0, scheduledBasalsSum: 0, bolusPercentage: 0,
+    correctionBolusPercentage: 0, hasPump: false, hasPen: false,
+  };
+  assert.equal(extractBasalBolusBreakdown(stats), null);
+});
+
+test('extractBasalBolusBreakdown still returns real data (including a genuine 0 in one field) when hasPump is true', () => {
+  const stats = {
+    basalPercentage: 55, otherBasalPercentage: 0, correctionBolusPercentage: 10,
+    automaticBolusPercentage: 0, hasPump: true, hasPen: false,
+  };
+  const b = extractBasalBolusBreakdown(stats);
+  assert.equal(b.basalPercent, 55);
+  assert.equal(b.automaticBolusPercent, 0, 'a real 0 in one field must survive when the window genuinely has activity');
 });
 
 // Regression coverage for the 2026-09-09 fix: CGM readings never carry a

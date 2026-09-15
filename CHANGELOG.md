@@ -17,6 +17,18 @@ summary, not a substitute for it.
   Glooko returns every glucose-value field as literal `0` (not omitted or
   null) alongside `hasPrimeDeviceData: false` in that case; 0 mmol/L is
   never a real reading, so this is now correctly treated as absent.
+- `get_basal_bolus_breakdown` and `get_meal_logging_stats` had the same
+  bug, confirmed with a live probe against a real account comparing a
+  genuinely empty window (before any device existed on the account)
+  against a real one: Glooko returns every field in both as a present,
+  non-null value, so a literal 0 in an empty window was indistinguishable
+  from a real 0 in a window that does have activity, and both tools
+  returned a full breakdown of zeros instead of `null`. Fixed using
+  `hasPump`/`hasPen`, the one pair of flags confirmed to actually differ
+  between the two windows — both `false` now means "no device-linked
+  activity in this window at all," gating the all-or-nothing result.
+  Individual fields that can legitimately be a real 0 in an active window
+  (0% correction bolus, 0 meals logged, etc.) are untouched.
 
 ### Documentation
 - Added a known, unresolved discrepancy to `get_basal_bolus_breakdown`'s
