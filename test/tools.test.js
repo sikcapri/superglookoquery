@@ -173,6 +173,62 @@ test('computeSummary returns bgCorrectionThreshold: null when the key is genuine
   assert.equal(s.settings[0].bgCorrectionThreshold, null);
 });
 
+// Regression coverage for the 2026-09-15 discovery: bgGoal (generalSettings)
+// and cgmAlerts (cgmSettings) both confirmed present in the same raw
+// settings snapshot as DIA/basal/profilesBolus, never extracted before.
+test('computeSummary extracts bgGoal and cgmAlerts when present', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4, bgGoalLow: 4.4, bgGoalHigh: 8.3 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+      cgmSettings: {
+        glucoseLowAlertEnabled: true,
+        glucoseLowAlertLimit: 3.9,
+        glucoseHighAlertEnabled: true,
+        glucoseHighAlertLimit: 11.1,
+        cgmGlucoseFallAlertEnabled: false,
+        cgmGlucoseFallAlertLimit: null,
+        cgmGlucoseRiseAlertEnabled: false,
+        cgmGlucoseRiseAlertLimit: null,
+      },
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.settings[0].bgGoal.low, 4.4);
+  assert.equal(s.settings[0].bgGoal.high, 8.3);
+  assert.equal(s.settings[0].cgmAlerts.lowGlucose.enabled, true);
+  assert.equal(s.settings[0].cgmAlerts.lowGlucose.limit, 3.9);
+  assert.equal(s.settings[0].cgmAlerts.fallRate.enabled, false);
+  assert.equal(s.settings[0].cgmAlerts.fallRate.limit, null);
+});
+
+test('computeSummary returns bgGoal fields null and cgmAlerts: null when genuinely absent', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.settings[0].bgGoal.low, null);
+  assert.equal(s.settings[0].bgGoal.high, null);
+  assert.equal(s.settings[0].cgmAlerts, null);
+});
+
 test('bucketTrend buckets by calendar granularity with sensible per-bucket fields', () => {
   const timeline = buildTimeline();
   const buckets = bucketTrend(timeline, THRESHOLDS, {

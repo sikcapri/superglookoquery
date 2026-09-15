@@ -31,6 +31,12 @@ summary, not a substitute for it.
   (found via a systematic pass looking for the same "reads part of an
   object, ignores real siblings" pattern that found the basal-rate
   schedule).
+- `get_settings_history` also now includes `bgGoal` (an overall glucose
+  goal range, distinct from the time-segmented targetBg profile) and
+  `cgmAlerts` (the device's own configured CGM alarm thresholds, a
+  different concept from this extension's own low/high boundaries used
+  for time-in-range), both confirmed present in the same raw settings
+  snapshot and never extracted before.
 
 ### Removed
 - Two genuinely dead code paths found via a systematic "is this exported

@@ -688,10 +688,19 @@ server.registerTool(
       'DIA_hours, maxBasalRate, basalRateSchedule (a list of {from, ' +
       'unitsPerHour} time segments, or null if this device/account has never ' +
       'shown it), scheduledDailyBasalUnits (or null), the targetBg, isf and ' +
-      'carbRatio profiles (each a list of {from, value} time segments), and ' +
+      'carbRatio profiles (each a list of {from, value} time segments), ' +
       'bgCorrectionThreshold (same shape, or null if this device/account has ' +
       'never shown it) — a separate correction-trigger level distinct from the ' +
-      'ordinary target range, where the device populates it.',
+      'ordinary target range, where the device populates it — plus bgGoal ' +
+      '({low, high}, a single overall goal range distinct from the ' +
+      'time-segmented targetBg profile) and cgmAlerts ({lowGlucose, ' +
+      'highGlucose, fallRate, riseRate}, each {enabled, limit}, or the whole ' +
+      'object null if unavailable) — the DEVICE\'S OWN configured alarm ' +
+      'thresholds, a different concept from this extension\'s own configured ' +
+      'low/high boundaries used for time-in-range. HONESTY CAVEAT: ' +
+      'fallRate/riseRate read like rate-of-change alerts, not plain glucose ' +
+      'levels — not independently confirmed against a real value sample, ' +
+      'treat as a best-effort reading of Glooko\'s field naming.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       start: z.string().describe(startDesc),

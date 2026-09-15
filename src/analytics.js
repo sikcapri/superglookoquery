@@ -919,6 +919,43 @@ export function computeSummary(
         }))
       : null,
     scheduledDailyBasalUnits: s.settings.pumpProfilesBasal?.[0]?.segments?.dailyTotal ?? null,
+    // Two more sibling fields confirmed present 2026-09-15 in the same raw
+    // settings snapshot, never extracted. bgGoal sits in generalSettings
+    // alongside DIA (activeInsulinTime) — a single overall goal range,
+    // distinct from the time-segmented targetBg profile above; both are
+    // real, not redundant. cgmAlerts sits in cgmSettings — the device's OWN
+    // configured alarm thresholds, a different concept from this server's
+    // configured low/high boundaries used for time-in-range (those are set
+    // in the extension's own settings, not read from the device). HONESTY
+    // CAVEAT: cgmAlerts' fall/rise fields are named like rate-of-change
+    // alerts, not plain glucose levels — this project has not independently
+    // confirmed whether their units match a plain mmol/mgdl conversion;
+    // treat the converted values as a best-effort reading of Glooko's field
+    // naming, cross-check against the device/app if precision matters.
+    bgGoal: {
+      low: toDisplay(s.settings.generalSettings.bgGoalLow, units),
+      high: toDisplay(s.settings.generalSettings.bgGoalHigh, units),
+    },
+    cgmAlerts: s.settings.cgmSettings
+      ? {
+          lowGlucose: {
+            enabled: s.settings.cgmSettings.glucoseLowAlertEnabled ?? null,
+            limit: toDisplay(s.settings.cgmSettings.glucoseLowAlertLimit, units),
+          },
+          highGlucose: {
+            enabled: s.settings.cgmSettings.glucoseHighAlertEnabled ?? null,
+            limit: toDisplay(s.settings.cgmSettings.glucoseHighAlertLimit, units),
+          },
+          fallRate: {
+            enabled: s.settings.cgmSettings.cgmGlucoseFallAlertEnabled ?? null,
+            limit: toDisplay(s.settings.cgmSettings.cgmGlucoseFallAlertLimit, units),
+          },
+          riseRate: {
+            enabled: s.settings.cgmSettings.cgmGlucoseRiseAlertEnabled ?? null,
+            limit: toDisplay(s.settings.cgmSettings.cgmGlucoseRiseAlertLimit, units),
+          },
+        }
+      : null,
   }));
 
   return {
