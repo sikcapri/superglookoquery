@@ -158,7 +158,7 @@ test('extractBasalBolusBreakdown treats a real zero as populated, not absent', (
   assert.equal(breakdown.otherBasalPercent, null);
 });
 
-// Regression coverage for the 2026-09-16 field_capability sweep: every one
+// Regression coverage for the 2026-09-15 field_capability sweep: every one
 // of these is a confirmed-real sibling of the original 8 keys, living in
 // the exact same stats object, never extracted before.
 test('extractBasalBolusBreakdown includes the expanded dosing/device-use fields when populated', () => {
@@ -208,7 +208,7 @@ test('extractBasalBolusBreakdown includes the expanded dosing/device-use fields 
   assert.equal(breakdown.showAutoBolusStats, true);
 });
 
-// Regression coverage for the 2026-09-16 sweep: extractGlucoseDistribution
+// Regression coverage for the 2026-09-15 sweep: extractGlucoseDistribution
 // reads Glooko's own AGP-style percentile band, converting glucose values
 // and un-typo-ing the two misspelled source keys into correctly-spelled
 // output fields.

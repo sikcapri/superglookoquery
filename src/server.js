@@ -126,7 +126,7 @@ function errorResult(message) {
 // lower/upper parameters are OPTIONAL overrides: omit them to use the
 // configured defaults, or pass them for a one-off (e.g. "time under 4.5").
 //
-// Module-level (not inside createServer()) since 2026-09-16: GATED_MODULES
+// Module-level (not inside createServer()) since 2026-09-15: GATED_MODULES
 // is also module-level, defined after createServer(), and its first
 // unit-converting module (glucose_distribution) needs unitsSchema/
 // resolveThresholdInputs too. Moving these out here doesn't change
@@ -1852,7 +1852,7 @@ const GATED_MODULES = [
   },
   {
     // Confirmed present in the same account's 'stats' response, via the
-    // same 2026-09-16 field_capability sweep that expanded
+    // same 2026-09-15 field_capability sweep that expanded
     // basal_bolus_breakdown above. Gated on 'median' rather than something
     // dosing-related since this module is glucose-distribution-specific,
     // not insulin-specific — an account could plausibly have one family of
@@ -1910,7 +1910,7 @@ const GATED_MODULES = [
     },
   },
   {
-    // Same 2026-09-16 field_capability sweep as glucose_distribution above.
+    // Same 2026-09-15 field_capability sweep as glucose_distribution above.
     // Gated on 'carbsPerDay' rather than a dosing/glucose field since an
     // account could plausibly have this family populated independently.
     name: 'meal_logging_stats',

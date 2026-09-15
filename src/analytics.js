@@ -606,7 +606,7 @@ export const BASAL_BOLUS_BREAKDOWN_KEYS = [
  * extractCamapsPumpModeBreakdown: this is never archived (see range.js's
  * getProcessedRange, stats: null by design).
  *
- * Expanded 2026-09-16 via a full field_capability sweep of every confirmed
+ * Expanded 2026-09-15 via a full field_capability sweep of every confirmed
  * real `stats` field name: everything below beyond the original 8 keys is a
  * direct sibling of basalPercentage/otherBasalPercentage/
  * correctionBolusPercentage/automaticBolusPercentage in the SAME raw stats
@@ -669,7 +669,7 @@ export function extractBasalBolusBreakdown(stats) {
 }
 
 // Confirmed present in the same `stats` (data2) blob as the breakdowns
-// above, via the same 2026-09-16 field_capability sweep. Glooko's own raw
+// above, via the same 2026-09-15 field_capability sweep. Glooko's own raw
 // field names carry two apparent typos, kept verbatim here as the literal
 // lookup keys since that's what the real response actually contains:
 // "tewentyFifthPercentile" (25th) and "seventyFiftnPercentile" (75th). The
@@ -728,7 +728,7 @@ export function extractGlucoseDistribution(stats, units = 'mmol') {
   };
 }
 
-// Confirmed present in the same `stats` (data2) blob, same 2026-09-16
+// Confirmed present in the same `stats` (data2) blob, same 2026-09-15
 // field_capability sweep. These are logging COUNTS (how many carb entries,
 // how many meals), not the nutrition-macro fields (caloriesPerMeal/
 // proteinPerMeal/fatPerMeal) also confirmed present in the same sweep —
