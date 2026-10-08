@@ -10,6 +10,8 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-09
+
 ### Fixed
 - `get_glucose_distribution` returned a full breakdown of zeros instead of
   its documented `distribution: null` for a window Glooko has no real
