@@ -60,7 +60,7 @@
 import initSqlJsFactory from 'sql.js';
 import path from 'path';
 import fs from 'fs';
-import { resolveDbPath, seedExampleDbIfEmpty } from './paths.js';
+import { resolveDbPath, seedExampleDbIfEmpty, reseedExampleDbOffline } from './paths.js';
 
 let SQL = null;       // the sql.js module, loaded lazily (see ensureSqlJsLoaded)
 let sqlJsLoading = null; // in-flight load promise, so concurrent callers share it
@@ -345,7 +345,8 @@ function openArchive(bytes) {
   // the archive is always just a rebuildable cache of Glooko's own data.
   const preStored = db.prepare('PRAGMA user_version').get();
   const storedVersion = preStored ? Object.values(preStored)[0] : 0;
-  if (storedVersion > 0 && storedVersion < SCHEMA_VERSION) {
+  const healing = storedVersion > 0 && storedVersion < SCHEMA_VERSION;
+  if (healing) {
     // field_capability is DELIBERATELY excluded from this list. Its own
     // schema (category/field_name/first_seen_epoch/prompted) hasn't changed
     // since it was introduced at SCHEMA_VERSION 7, and it is explicitly
@@ -370,6 +371,7 @@ function openArchive(bytes) {
   db.exec(SCHEMA_SQL);
   // Stamp the current version (covers both fresh DBs at 0 and just-healed ones).
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  return healing;
 }
 
 const RETRY_PAUSE_MS = 150;
@@ -400,7 +402,16 @@ export function initDb(dbPath = resolveDbPath()) {
   const fileExisted = fs.existsSync(dbFilePath);
   try {
     const bytes = fileExisted ? fs.readFileSync(dbFilePath) : undefined;
-    openArchive(bytes);
+    const healed = openArchive(bytes);
+    // An offline install (no Glooko login) just had its sample archive
+    // emptied by a schema upgrade and has nothing to re-pull from: put the
+    // bundled sample back rather than leave it empty.
+    if (healed && reseedExampleDbOffline(dbFilePath)) {
+      rawDb.close();
+      rawDb = null;
+      db = null;
+      openArchive(fs.readFileSync(dbFilePath));
+    }
     return db;
   } catch (err) {
     if (!fileExisted) {

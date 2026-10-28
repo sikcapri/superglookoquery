@@ -122,6 +122,22 @@ function glookoCredentialsPresent() {
  * initDb() will otherwise create an empty file at dbPath first and this
  * check would then see the path as already "existing" and skip seeding.
  */
+/**
+ * Replace the archive at dbPath with the bundled sample database, for an
+ * offline install (no Glooko login) whose archive was just emptied by a
+ * schema upgrade. seedExampleDbIfEmpty() never does this on its own because
+ * the file still exists, so without this an offline demo install would be
+ * left permanently empty after an upgrade, with no account to re-pull from.
+ * Returns true when it replaced the file.
+ */
+export function reseedExampleDbOffline(dbPath = resolveDbPath()) {
+  if (glookoCredentialsPresent()) return false;
+  const example = exampleDbPath();
+  if (!fs.existsSync(example)) return false;
+  fs.copyFileSync(example, dbPath);
+  return true;
+}
+
 export function seedExampleDbIfEmpty(dbPath = resolveDbPath()) {
   if (fs.existsSync(dbPath)) return false;
   if (glookoCredentialsPresent()) return false;

@@ -10,6 +10,36 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-28
+
+### Added
+- `coveragePercent` in the summary's `glucoseControl` and in
+  `compare_periods`: the share of the period between the first and last
+  CGM reading that actually has data. Time in range is the share of the
+  readings that exist, so a low coverage means it describes only part of
+  the period. Gaps over 15 minutes count as missing, which makes the
+  figure independent of how often a sensor reports. `get_trend` now uses
+  the same measure for its per-bucket coverage (it previously compared
+  the reading count against a fixed 5-minute cadence, which a denser
+  sensor stream could mask a gap behind).
+
+### Fixed
+- A window with no CGM readings (a sensor gap, or only boluses) reported
+  0% time in range and a 0 average as real numbers, so comparing it
+  against a normal week showed a meaningless swing. Such windows now have
+  null glucose metrics in `get_diabetes_summary`, `get_trend` and
+  `compare_periods` (null deltas), and the chart's day panels say "No
+  readings this day" instead of printing null.
+- An offline install running on the bundled sample data was left with an
+  empty archive after a schema upgrade (v0.3.0 included one), because the
+  sample is only seeded when the file does not exist. The sample is now
+  restored when an upgrade empties an offline archive.
+- The persona's Liberty guidance applied to any window with even a little
+  Liberty time, and stated as fact that carb entries are not missing.
+  It now covers only the Liberty share of a window and says "may be
+  expected".
+- The CamAPS mode tool description listed Liberty twice.
+
 ## [0.3.0] - 2026-10-28
 
 ### Added

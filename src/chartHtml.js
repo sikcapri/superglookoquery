@@ -927,7 +927,7 @@ const HTML_TAIL = `;
     dot.style.background = 'var(--cat-' + (dm.colorIdx + 1) + ')';
     summaryEl.appendChild(dot);
     summaryEl.appendChild(document.createTextNode(dm.label));
-    if (s && s.glucoseControl) {
+    if (s && s.glucoseControl && s.glucoseControl.cgmReadingCount) {
       var gc = s.glucoseControl;
       summaryEl.appendChild(el(
         'span', 'day-detail-quick',
@@ -945,7 +945,9 @@ const HTML_TAIL = `;
     var body = el('div', 'day-detail-body');
 
     var gc2 = s.glucoseControl;
-    body.appendChild(buildGroup('Glucose control', [
+    if (!gc2.cgmReadingCount) {
+      body.appendChild(buildGroup('Glucose control', [['Glucose', 'No readings this day']]));
+    } else body.appendChild(buildGroup('Glucose control', [
       ['Average', fmt(gc2.averageBG) + ' ' + DATA.unitLabel],
       ['GMI (est. A1c)', gc2.gmiEstimatedA1c + '%'],
       ['Time in range', gc2.timeInRange + '%'],

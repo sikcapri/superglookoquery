@@ -12,6 +12,7 @@ import {
   extractCgmDevices,
   cgmNameForEpoch,
   comparePeriods,
+  cgmCoveragePercent,
   getActiveSettings,
 } from '../src/analytics.js';
 
@@ -528,4 +529,54 @@ test('comparePeriods returns both periods and B-minus-A deltas, null where a sid
   assert.equal(r.delta.bolusEventsPerDay, 0);
   assert.equal(r.delta.carbsPerDay, null, 'no carbs in period B means no delta, not a made-up zero');
   assert.equal(r.periodA.bolusEventsPerDay, 4);
+});
+
+// A window with no CGM readings has no glucose metrics (null), not 0% time in
+// range. Otherwise a comparison against it reports a huge, meaningless swing.
+test('comparePeriods: a period with no CGM readings has null glucose metrics and null deltas', () => {
+  const withCgm = {
+    unit: 'mmol/L',
+    reportRange: { days: 7 },
+    glucoseControl: { averageBG: 7, gmiEstimatedA1c: 6.5, stdDev: 2, coefficientOfVariation: 30, timeInRange: 70, timeLow: 2, timeHigh: 28, cgmReadingCount: 1000 },
+    insulin: { observedDays: 7, bolusUnitsPerDay: 10, bolusEventCount: 28, averageBasalUnitsPerDay: 20, basalPercent: 66 },
+    carbs: { carbsPerDay: 100 },
+  };
+  const noCgm = {
+    ...withCgm,
+    glucoseControl: { averageBG: null, gmiEstimatedA1c: null, stdDev: null, coefficientOfVariation: null, timeInRange: null, timeLow: null, timeHigh: null, cgmReadingCount: 0 },
+  };
+  const r = comparePeriods(noCgm, withCgm);
+  assert.equal(r.delta.timeInRange, null);
+  assert.equal(r.delta.averageBG, null);
+  assert.equal(r.delta.gmiEstimatedA1c, null);
+  assert.equal(r.delta.bolusUnitsPerDay, 0, 'non-glucose metrics still compare normally');
+});
+
+test('cgmCoveragePercent: continuous readings are 100%, a gap lowers it, and the cadence does not matter', () => {
+  const day = (stepSec, skipFrom, skipTo) => {
+    const out = [];
+    for (let t = 0; t <= 86400; t += stepSec) if (!(t >= skipFrom && t < skipTo)) out.push(1000000 + t);
+    return out;
+  };
+  assert.equal(cgmCoveragePercent(day(300, -1, -1)), 100);
+  // a 6-hour hole in a 24-hour span, at 5-minute and at 1-minute cadence
+  const five = cgmCoveragePercent(day(300, 6 * 3600, 12 * 3600));
+  const one = cgmCoveragePercent(day(60, 6 * 3600, 12 * 3600));
+  assert.ok(Math.abs(five - 75) < 1, `expected about 75, got ${five}`);
+  assert.equal(five, one, 'a denser sensor stream must not hide the same gap');
+  assert.equal(cgmCoveragePercent([]), 0);
+  assert.equal(cgmCoveragePercent([5]), 100);
+});
+
+test('comparePeriods carries coveragePercent and its delta', () => {
+  const mk = (cov) => ({
+    unit: 'mmol/L',
+    reportRange: { days: 7 },
+    glucoseControl: { averageBG: 7, gmiEstimatedA1c: 6.5, stdDev: 2, coefficientOfVariation: 30, timeInRange: 70, timeLow: 2, timeHigh: 28, cgmReadingCount: 1000, coveragePercent: cov },
+    insulin: { observedDays: 7, bolusUnitsPerDay: 10, bolusEventCount: 28, averageBasalUnitsPerDay: 20, basalPercent: 66 },
+    carbs: { carbsPerDay: 100 },
+  });
+  const r = comparePeriods(mk(98), mk(60));
+  assert.equal(r.periodA.coveragePercent, 98);
+  assert.equal(r.delta.coveragePercent, -38);
 });

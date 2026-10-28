@@ -338,7 +338,7 @@ server.registerTool(
       'Returns: reportRange (start, end, days, reflecting the actual data ' +
       'present), glucoseControl (averageBG, gmiEstimatedA1c, stdDev, ' +
       'coefficientOfVariation, variability flag, timeInRange/timeLow/timeHigh, ' +
-      'cgmReadingCount); glucoseExtremes (highest and lowest readings, each with ' +
+      'cgmReadingCount, coveragePercent); glucoseExtremes (highest and lowest readings, each with ' +
       'every timestamped instance); bestWorst (bestDay, worstDay, bestHour, ' +
       'worstHour, each with tir, medianAbsTargetDev, cv); insulin (observedDays, ' +
       'bolusUnits, bolusUnitsPerDay, bolusEventCount, avgUnitsPerBolus, and when ' +
@@ -421,15 +421,20 @@ server.registerTool(
       'summarised the same way get_diabetes_summary does.\n\n' +
       'Returns: periodA and periodB, each with range, averageBG, ' +
       'gmiEstimatedA1c, stdDev, coefficientOfVariation, timeInRange, timeLow, ' +
-      'timeHigh, cgmReadingCount, bolusUnitsPerDay, bolusEventsPerDay, ' +
+      'timeHigh, cgmReadingCount, coveragePercent, bolusUnitsPerDay, bolusEventsPerDay, ' +
       'averageBasalUnitsPerDay, totalUnitsPerDay, basalPercent and carbsPerDay; ' +
       'and delta (period B minus period A for each, null when either side lacks ' +
       'it). The two windows can be different lengths, every figure is a rate or ' +
       'percentage, not a total. It does NOT include loop-mode usage: if ' +
       'get_camaps_pump_mode_breakdown is available, call it for each window to ' +
       'see how much of each was spent in automatic/Liberty/etc. Fewer boluses ' +
-      'and carb entries in a fully closed-loop window is expected, not missing ' +
-      'data. Windows with very few days are noisy: say so when comparing under ' +
+      'and carb entries in a fully closed-loop window may be expected, rather ' +
+      'than missing data. coveragePercent is the share of each window that ' +
+      'actually has CGM data: TIR is the share of the readings that exist, so ' +
+      'when it is well below 100 (say under 70) the TIR covers only part of ' +
+      'that period, and a comparison against a fuller period is weaker. A window with no CGM readings has null glucose ' +
+      'metrics and null deltas, it is never treated as 0% time in range. ' +
+      'Windows with very few days are noisy: say so when comparing under ' +
       'about a week.',
     annotations: { readOnlyHint: true },
     inputSchema: {
@@ -1801,7 +1806,7 @@ const GATED_MODULES = [
           title: 'CamAPS pump-mode breakdown',
           description:
             'How much of the window CamAPS FX spent in each of its own operating ' +
-            'modes: automatic (closed-loop dosing), manual, easeOff, boost, liberty, ' +
+            'modes: automatic (closed-loop dosing), manual, easeOff, boost, ' +
             'liberty (the fully closed-loop mode: no carb counting or meal ' +
             'boluses), and attempting (the algorithm trying to resume closed-loop control). ' +
             'This is CamAPS-specific — it only appears at all for an account whose ' +

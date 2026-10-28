@@ -1257,17 +1257,39 @@ export function computeSummary(
   return {
     unit: unitLabel,
     reportRange: { start: reportStart, end: reportEnd, days: +days.toFixed(2) },
-    glucoseControl: {
-      averageBG: toDisplay(avg, units),
-      gmiEstimatedA1c: gmi,
-      stdDev: toDisplayDelta(std, units),
-      coefficientOfVariation: +cv.toFixed(2),
-      variabilityFlag: cv > 36 ? 'High Variability' : 'Stable',
-      timeInRange: +tir.tir.toFixed(2),
-      timeLow: +tir.low.toFixed(2),
-      timeHigh: +tir.high.toFixed(2),
-      cgmReadingCount: cgmVals.length,
-    },
+    // A window with no CGM readings (a sensor gap, or only boluses) has NO
+    // glucose metrics: null, not the zeros the accumulators start at, which
+    // read as a real 0% time in range and skew any comparison against it.
+    glucoseControl: cgmVals.length
+      ? {
+          averageBG: toDisplay(avg, units),
+          gmiEstimatedA1c: gmi,
+          stdDev: toDisplayDelta(std, units),
+          coefficientOfVariation: +cv.toFixed(2),
+          variabilityFlag: cv > 36 ? 'High Variability' : 'Stable',
+          timeInRange: +tir.tir.toFixed(2),
+          timeLow: +tir.low.toFixed(2),
+          timeHigh: +tir.high.toFixed(2),
+          cgmReadingCount: cgmVals.length,
+          // Share of the first-to-last-reading span with data. TIR above is
+          // the share of the readings that exist, so a low coverage means it
+          // describes only part of the period.
+          coveragePercent: cgmCoveragePercent(
+            timeline.filter((i) => i.type === 'CGM').map((i) => i.epoch)
+          ),
+        }
+      : {
+          averageBG: null,
+          gmiEstimatedA1c: null,
+          stdDev: null,
+          coefficientOfVariation: null,
+          variabilityFlag: null,
+          timeInRange: null,
+          timeLow: null,
+          timeHigh: null,
+          cgmReadingCount: 0,
+          coveragePercent: null,
+        },
     glucoseExtremes,
     bestWorst: {
       bestDay: bestD,
@@ -1368,6 +1390,29 @@ function round(v, dp = 2) {
  * of things we measure event-by-event (bolus, CGM), avoiding calendar-boundary
  * miscounts. Returns a small positive floor for a single reading.
  */
+/**
+ * Percent of the span between the first and last reading that actually has
+ * CGM data. Any gap between consecutive readings longer than 15 minutes
+ * counts as missing (less the stream's own typical interval, the median gap,
+ * which is what a reading itself covers), so this is independent of how
+ * often a given sensor reports: a 1-minute stream and a 5-minute stream with
+ * the same 6-hour hole score the same. Leading and
+ * trailing time outside the first/last reading is not counted, because the
+ * archive has no record of what the requested window was. 0 for no readings.
+ */
+export function cgmCoveragePercent(epochs) {
+  if (!epochs || !epochs.length) return 0;
+  const sorted = [...epochs].sort((a, b) => a - b);
+  const span = sorted[sorted.length - 1] - sorted[0];
+  if (span <= 0) return 100;
+  const gaps = [];
+  for (let i = 1; i < sorted.length; i++) gaps.push(sorted[i] - sorted[i - 1]);
+  const typical = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+  let missing = 0;
+  for (const gap of gaps) if (gap > 900) missing += gap - typical;
+  return +Math.max(0, Math.min(100, ((span - missing) / span) * 100)).toFixed(1);
+}
+
 export function observedDaySpan(epochs) {
   if (!epochs.length) return 0;
   let min = Infinity;
@@ -1560,7 +1605,7 @@ function buildBucketRow(b, thresholds, units) {
 
   // Coverage relative to the observed span at 5-min cadence.
   const expectedReadings = Math.max(1, Math.round(observedDays * 288));
-  const coveragePct = +Math.min(100, (b.cgmCount / expectedReadings) * 100).toFixed(1);
+  const coveragePct = cgmCoveragePercent(b.cgmEpochs);
 
   // Sum ALL basal days in this bucket (no whole/partial exclusion). basalDayCount
   // is the number of whole-day basal loads; it may differ slightly from the
@@ -1609,12 +1654,12 @@ function buildBucketRow(b, thresholds, units) {
     end: new Date(b.lastEpoch * 1000).toISOString(),
     observedDays: +observedDays.toFixed(3),
     glucose: {
-      avg: toDisplay(avg, units),
-      timeInRange: b.cgmCount ? +((b.inRange / b.cgmCount) * 100).toFixed(2) : 0,
-      timeLow: b.cgmCount ? +((b.low / b.cgmCount) * 100).toFixed(2) : 0,
-      timeHigh: b.cgmCount ? +((b.high / b.cgmCount) * 100).toFixed(2) : 0,
-      stdDev: toDisplayDelta(std, units),
-      coefficientOfVariation: +cv.toFixed(2),
+      avg: b.cgmCount ? toDisplay(avg, units) : null,
+      timeInRange: b.cgmCount ? +((b.inRange / b.cgmCount) * 100).toFixed(2) : null,
+      timeLow: b.cgmCount ? +((b.low / b.cgmCount) * 100).toFixed(2) : null,
+      timeHigh: b.cgmCount ? +((b.high / b.cgmCount) * 100).toFixed(2) : null,
+      stdDev: b.cgmCount ? toDisplayDelta(std, units) : null,
+      coefficientOfVariation: b.cgmCount ? +cv.toFixed(2) : null,
       gmiEstimatedA1c: gmi,
       cgmReadingCount: b.cgmCount,
     },
@@ -2271,6 +2316,7 @@ export function comparePeriods(summaryA, summaryB) {
       timeLow: g.timeLow ?? null,
       timeHigh: g.timeHigh ?? null,
       cgmReadingCount: g.cgmReadingCount ?? null,
+      coveragePercent: g.coveragePercent ?? null,
       bolusUnitsPerDay: bolus,
       bolusEventsPerDay: days && ins.bolusEventCount != null ? +(ins.bolusEventCount / days).toFixed(2) : null,
       averageBasalUnitsPerDay: basal,

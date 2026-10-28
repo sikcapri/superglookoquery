@@ -376,3 +376,44 @@ test('get_glucose-style output: toDisplay/toDisplayDelta convert stored mmol val
   assert.equal(toDisplay(6.5, 'mgdl'), 117); // 6.5 * 18, rounded
   assert.equal(typeof toDisplayDelta(0.3, 'mmol'), 'number');
 });
+
+test('computeSummary: a window with boluses but no CGM readings has null glucose metrics, not zeros', () => {
+  const timeline = [bolus(START + 8 * 3600)];
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(s.glucoseControl.cgmReadingCount, 0);
+  assert.equal(s.glucoseControl.timeInRange, null);
+  assert.equal(s.glucoseControl.averageBG, null);
+  assert.equal(s.glucoseControl.gmiEstimatedA1c, null);
+  assert.equal(s.glucoseControl.coveragePercent, null);
+});
+
+test('computeSummary reports coveragePercent alongside the reading count', () => {
+  const timeline = buildTimeline();
+  const settingsHistory = [{
+    activeTimestamp: new Date(START * 1000).toISOString(),
+    settings: {
+      generalSettings: { activeInsulinTime: 4 },
+      basalSettings: { maxBasalRate: 3.5 },
+      profilesBolus: [{
+        targetBgSegments: { data: [{ segmentStart: 0, value: 6.1 }] },
+        isfSegments: { data: [{ segmentStart: 0, value: 2.8 }] },
+        insulinToCarbRatioSegments: { data: [{ segmentStart: 0, value: 10 }] },
+      }],
+    },
+  }];
+  const s = computeSummary(timeline, null, settingsHistory, THRESHOLDS, 'mmol/L', 'exact', []);
+  assert.equal(typeof s.glucoseControl.coveragePercent, 'number');
+  assert.ok(s.glucoseControl.coveragePercent >= 0 && s.glucoseControl.coveragePercent <= 100);
+});
