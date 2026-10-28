@@ -132,7 +132,13 @@ function ensureSqlJsLoaded() {
 //       extended_delivery_percentage/duration_string (TEXT, not REAL, for
 //       the last one) to match the common case; the rarer raw-delivery
 //       shape stays in `extra` for now. See docs/PROMOTION.md's log.
-const SCHEMA_VERSION = 9;
+//  10 = force a full re-pull so two things stored at ingest get re-derived:
+//       bolus `class` (CamAPS omits the correction/carb fields the old
+//       classifier required, so most of its boluses were stored 'Unknown',
+//       and manual carb boluses now classify as 'Manual Meal Bolus'), and CGM
+//       `extra.deviceName` (previously stamped from a single name for the
+//       whole pull, which mislabelled history after a sensor switch).
+const SCHEMA_VERSION = 10;
 
 /**
  * Serialise the in-memory database to disk. Cheap enough to call once per

@@ -988,6 +988,7 @@ const HTML_TAIL = `;
       if (arch.manualCorrection) archParts.push(arch.manualCorrection + ' manual correction');
       if (arch.systemCorrection) archParts.push(arch.systemCorrection + ' system correction');
       if (arch.mealWithCorrection) archParts.push(arch.mealWithCorrection + ' meal+correction');
+      if (arch.manualMeal) archParts.push(arch.manualMeal + ' manual meal');
       if (archParts.length) body.appendChild(buildGroup('Bolus types', [[null, archParts.join(', ')]]));
     }
 
@@ -1150,6 +1151,7 @@ const HTML_TAIL = `;
     if (cls === 'Manual Correction Bolus') return 'Manual correction';
     if (cls === 'System Correction Bolus') return 'System correction';
     if (cls === 'Meal With Correction Bolus') return 'Meal + correction';
+    if (cls === 'Manual Meal Bolus') return 'Manual meal bolus';
     return cls || 'Bolus';
   }
 

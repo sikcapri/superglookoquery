@@ -34,7 +34,8 @@ import {
   extractBasalBolusBreakdown,
   extractGlucoseDistribution,
   extractMealLoggingStats,
-  extractDeviceNames,
+  extractCgmDevices,
+  cgmNameForEpoch,
 } from './analytics.js';
 import {
   ensureDbReady,
@@ -153,11 +154,15 @@ export async function pullAndIngest(startISO, endISO) {
   // anything captureExtra() sweeps from a per-reading object). Done here,
   // not inside processUnifiedGlookoData, because that function only ever
   // receives data1 and stays deliberately free of any data3 dependency.
-  const deviceNames = extractDeviceNames(raw.data3);
-  if (deviceNames.cgm) {
+  // Per-reading, not one name for the whole pull: after a sensor switch the
+  // device list holds both CGMs, and each reading gets the one that was
+  // actually syncing at that time (see cgmNameForEpoch).
+  const cgmDevices = extractCgmDevices(raw.data3);
+  if (cgmDevices.length) {
     for (const item of timeline) {
       if (item.type === 'CGM' && (!item.extra || item.extra.deviceName == null)) {
-        item.extra = { ...(item.extra || {}), deviceName: deviceNames.cgm };
+        const name = cgmNameForEpoch(cgmDevices, item.epoch);
+        if (name) item.extra = { ...(item.extra || {}), deviceName: name };
       }
     }
   }

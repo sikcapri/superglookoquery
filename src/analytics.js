@@ -273,22 +273,20 @@ export function processUnifiedGlookoData(rawJson) {
   });
 
   const boluses = (series.deliveredBolus || []).map((b) => {
+    // A missing (not just zero) recommendation field counts as "none":
+    // CamAPS FX omits insulinRecommendationForCorrection and carbsInput
+    // instead of sending 0, which left most of its boluses as 'Unknown' when
+    // this required an exact === 0.
+    const hasCarbs = b.carbsInput > 0;
+    const hasCorrectionRec = b.insulinRecommendationForCorrection > 0;
+    const hasAnyRec = b.totalInsulinRecommendation > 0;
     let cat = 'Unknown';
-    if (!b.isManual && b.carbsInput > 0 && b.insulinRecommendationForCorrection === 0)
-      cat = 'Meal Bolus';
-    else if (b.isManual && b.carbsInput === 0) cat = 'Manual Correction Bolus';
-    else if (
-      !b.isManual &&
-      b.carbsInput === 0 &&
-      b.insulinRecommendationForCorrection > 0
-    )
+    if (!b.isManual && hasCarbs && !hasCorrectionRec) cat = 'Meal Bolus';
+    else if (!b.isManual && hasCarbs && hasCorrectionRec) cat = 'Meal With Correction Bolus';
+    else if (!b.isManual && !hasCarbs && (hasCorrectionRec || hasAnyRec))
       cat = 'System Correction Bolus';
-    else if (
-      !b.isManual &&
-      b.carbsInput > 0 &&
-      b.insulinRecommendationForCorrection > 0
-    )
-      cat = 'Meal With Correction Bolus';
+    else if (b.isManual && hasCarbs) cat = 'Manual Meal Bolus';
+    else if (b.isManual && !hasCarbs) cat = 'Manual Correction Bolus';
     // Override direction: the device flags when the programmed dose was pushed
     // above or below the algorithm's recommendation.
     const override = b.isOverrideAbove
@@ -704,6 +702,8 @@ export const GLUCOSE_DISTRIBUTION_KEYS = [
   'ninetiethPercentile',
   'stdDev',
   'averageBg',
+  'min',
+  'max',
   'readingsPerDay',
   'incompleteReadings',
   'hasPrimeDeviceData',
@@ -745,18 +745,14 @@ export function extractGlucoseDistribution(stats, units = 'mmol') {
   const glucoseValueKeys = [
     'tenthPercentile', 'tewentyFifthPercentile', 'median',
     'seventyFiftnPercentile', 'ninetiethPercentile', 'stdDev', 'averageBg',
+    'min', 'max',
   ];
   const hasRealData = glucoseValueKeys.some((k) => isRealGlucoseValue(stats[k]));
-  // hasPrimeDeviceData: false co-occurred with the original all-zero bug
-  // report, so it's kept as a defensive extra check — but a follow-up live
-  // probe (2026-09-16, comparing a real window against a genuinely empty
-  // one on the same account) found this flag identical in BOTH, suggesting
-  // it may be an account-level attribute rather than a per-window "is there
-  // data here" signal. The real, load-bearing protection is the 0-means-
-  // absent rule above (0 mmol/L can never be a genuine reading, in any
-  // window, for any account) — this flag is a secondary check, not relied
-  // on alone.
-  if (!hasRealData || stats.hasPrimeDeviceData === false) return null;
+  // hasPrimeDeviceData is deliberately NOT used as a gate: it is false for a
+  // real account with a Dexcom G7 even while every percentile, the median and
+  // averageBg carry real values, so gating on it nulled out genuine data.
+  // The 0-means-absent rule above is the only signal needed.
+  if (!hasRealData) return null;
   const abs = (v) => (v == null || v === 0 ? null : toDisplay(normaliseIncoming(v), units));
   return {
     tenthPercentile: abs(stats.tenthPercentile),
@@ -766,6 +762,14 @@ export function extractGlucoseDistribution(stats, units = 'mmol') {
     ninetiethPercentile: abs(stats.ninetiethPercentile),
     stdDev: (stats.stdDev == null || stats.stdDev === 0) ? null : toDisplayDelta(normaliseIncomingDelta(stats.stdDev), units),
     averageBg: abs(stats.averageBg),
+    // New in Glooko's stats response alongside G7 data; read as the window's
+    // lowest/highest glucose (inferred from the field names, the same
+    // not-independently-verified caveat as the rest of this blob). The
+    // sibling *Group/minBucket/maxBucket fields are deliberately skipped:
+    // they come back as a bare label ("low") for every percentile, which
+    // can't be right for a 90th percentile.
+    min: abs(stats.min),
+    max: abs(stats.max),
     readingsPerDay: numOrNull(stats.readingsPerDay),
     incompleteReadings: numOrNull(stats.incompleteReadings),
     hasPrimeDeviceData: stats.hasPrimeDeviceData ?? null,
@@ -865,6 +869,42 @@ export function extractDeviceNames(data3) {
     cgm: cgmDevice ? nameFor(cgmDevice) : null,
     pump: pumpDevice ? nameFor(pumpDevice) : null,
   };
+}
+
+/**
+ * Every CGM on the account's device list with the wall-clock time it last
+ * synced, oldest sync first. When a patient switches sensors, Glooko's device
+ * list keeps BOTH, and each one's lastSyncTimestamp marks where its own data
+ * ends, which is what lets cgmNameForEpoch label each reading with the device
+ * that actually produced it. (Stamping every reading with a single name
+ * taken from "the first CGM in the list" mislabelled all history pulled after
+ * a switch.)
+ */
+export function extractCgmDevices(data3) {
+  const devices = data3 && Array.isArray(data3.devices) ? data3.devices : [];
+  return devices
+    .filter((d) => d.deviceClassification === 'cgm_device' || d.type === 'cgm')
+    .map((d) => {
+      const name = d.properties?.cgmModel || d.model || d.shortDisplayName || d.displayName || null;
+      const ts = Date.parse(d.lastSyncTimestamp ?? d.lastSyncTimestampUtc ?? '');
+      return { name, lastSyncEpoch: Number.isFinite(ts) ? ts / 1000 : Infinity };
+    })
+    .filter((d) => d.name)
+    .sort((a, b) => a.lastSyncEpoch - b.lastSyncEpoch);
+}
+
+/**
+ * The CGM that produced a reading at `epoch`: the device with the earliest
+ * lastSync that is still at or after the reading, falling back to the most
+ * recently synced device for readings newer than every sync. Returns null
+ * when the account lists no CGM. Limitation: a reading older than every
+ * listed device's own history (a sensor no longer on the list) is attributed
+ * to the earliest listed device.
+ */
+export function cgmNameForEpoch(cgmDevices, epoch) {
+  if (!cgmDevices || !cgmDevices.length) return null;
+  const match = cgmDevices.find((d) => d.lastSyncEpoch >= epoch);
+  return (match || cgmDevices[cgmDevices.length - 1]).name;
 }
 
 /**
@@ -1108,6 +1148,7 @@ export function computeSummary(
     mealWithCorrection: boluses.filter(
       (b) => b.class === 'Meal With Correction Bolus'
     ).length,
+    manualMeal: boluses.filter((b) => b.class === 'Manual Meal Bolus').length,
   };
 
   // Settings snapshots, human-readable
@@ -2205,4 +2246,45 @@ export function extractDeviceEvents(rawJson) {
     podChanges: dedupe(series.setSiteChange),
     sensorChanges: dedupe(series.cgmSensorChange),
   };
+}
+
+/**
+ * Side-by-side comparison of two computeSummary() results (e.g. before and
+ * after switching to a fully closed-loop mode). Pure: takes the summaries,
+ * returns a compact metric set per period plus delta = B minus A. Any metric
+ * that is null in either period has a null delta rather than a made-up zero.
+ */
+export function comparePeriods(summaryA, summaryB) {
+  const pick = (s) => {
+    const g = s.glucoseControl || {};
+    const ins = s.insulin || {};
+    const days = ins.observedDays || null;
+    const basal = ins.averageBasalUnitsPerDay ?? null;
+    const bolus = ins.bolusUnitsPerDay ?? null;
+    return {
+      range: s.reportRange,
+      averageBG: g.averageBG ?? null,
+      gmiEstimatedA1c: g.gmiEstimatedA1c ?? null,
+      stdDev: g.stdDev ?? null,
+      coefficientOfVariation: g.coefficientOfVariation ?? null,
+      timeInRange: g.timeInRange ?? null,
+      timeLow: g.timeLow ?? null,
+      timeHigh: g.timeHigh ?? null,
+      cgmReadingCount: g.cgmReadingCount ?? null,
+      bolusUnitsPerDay: bolus,
+      bolusEventsPerDay: days && ins.bolusEventCount != null ? +(ins.bolusEventCount / days).toFixed(2) : null,
+      averageBasalUnitsPerDay: basal,
+      totalUnitsPerDay: basal != null && bolus != null ? +(basal + bolus).toFixed(2) : null,
+      basalPercent: ins.basalPercent ?? null,
+      carbsPerDay: s.carbs?.carbsPerDay ?? null,
+    };
+  };
+  const a = pick(summaryA);
+  const b = pick(summaryB);
+  const delta = {};
+  for (const k of Object.keys(a)) {
+    if (k === 'range') continue;
+    delta[k] = a[k] == null || b[k] == null ? null : +(b[k] - a[k]).toFixed(2);
+  }
+  return { unit: summaryA.unit, periodA: a, periodB: b, delta };
 }

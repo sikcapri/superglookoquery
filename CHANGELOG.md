@@ -10,6 +10,35 @@ summary, not a substitute for it.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-28
+
+### Added
+- `compare_periods`: two windows side by side in one call, with deltas on
+  time in range, lows/highs, variability, insulin per day and carbs per
+  day. Built for before/after questions such as switching to CamAPS
+  Liberty (fully closed-loop), a new sensor or a settings change.
+- A `Manual Meal Bolus` bolus class (user-entered carbs with a hand-set
+  dose), usable in `get_enriched_bolus_log`'s class filter and counted as
+  `manualMeal` in the summary's `bolusArchitecture`.
+- `get_glucose_distribution` now also returns `min` and `max`.
+- The clinical auditor persona and the CamAPS mode tool describe Liberty:
+  few or no meal boluses and carb entries on fully closed-loop days are
+  expected, not missed doses or missing data.
+
+### Fixed
+- Most CamAPS FX boluses were classed `Unknown` (116 of 130 in one real
+  month) because the classifier needed `insulinRecommendationForCorrection`
+  and `carbsInput` to be an explicit 0, and CamAPS omits them. A missing
+  field now counts as none. Existing archives re-pull automatically
+  (schema version 10) so stored classes are re-derived.
+- CGM readings were all labelled with one device name per pull, taken from
+  the first CGM in Glooko's device list, so history pulled after a sensor
+  switch carried the new sensor's name. Each reading now gets the CGM that
+  was syncing at that time, using each device's last sync time.
+- `get_glucose_distribution` returned null for an account whose
+  `hasPrimeDeviceData` is false even though every percentile, the median
+  and the average were populated. That flag is no longer used as a gate.
+
 ## [0.2.2] - 2026-10-09
 
 ### Fixed

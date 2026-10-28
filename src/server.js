@@ -69,6 +69,7 @@ import {
   buildChartXAxis,
   buildChartDaySegments,
   buildDaySummaries,
+  comparePeriods,
   summariseBasalStates,
   getThresholds,
   calculateTIRMetrics,
@@ -407,6 +408,65 @@ server.registerTool(
   }
 );
 
+// --- compare_periods ------------------------------------------------------
+server.registerTool(
+  'compare_periods',
+  {
+    title: 'Compare two periods side by side',
+    description:
+      'Compares two windows in one call, for before/after questions such as ' +
+      '"how has my control changed since I switched to a fully closed-loop mode ' +
+      '(CamAPS Liberty)", a new sensor, or a settings change. Pass period A (the ' +
+      'earlier or baseline window) and period B (the later one); each is ' +
+      'summarised the same way get_diabetes_summary does.\n\n' +
+      'Returns: periodA and periodB, each with range, averageBG, ' +
+      'gmiEstimatedA1c, stdDev, coefficientOfVariation, timeInRange, timeLow, ' +
+      'timeHigh, cgmReadingCount, bolusUnitsPerDay, bolusEventsPerDay, ' +
+      'averageBasalUnitsPerDay, totalUnitsPerDay, basalPercent and carbsPerDay; ' +
+      'and delta (period B minus period A for each, null when either side lacks ' +
+      'it). The two windows can be different lengths, every figure is a rate or ' +
+      'percentage, not a total. It does NOT include loop-mode usage: if ' +
+      'get_camaps_pump_mode_breakdown is available, call it for each window to ' +
+      'see how much of each was spent in automatic/Liberty/etc. Fewer boluses ' +
+      'and carb entries in a fully closed-loop window is expected, not missing ' +
+      'data. Windows with very few days are noisy: say so when comparing under ' +
+      'about a week.',
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      startA: z.string().describe('Period A (baseline) start, ISO 8601 wall-clock. ' + startDesc),
+      endA: z.string().describe('Period A (baseline) end, ISO 8601 wall-clock.'),
+      startB: z.string().describe('Period B (comparison) start, ISO 8601 wall-clock.'),
+      endB: z.string().describe('Period B (comparison) end, ISO 8601 wall-clock.'),
+      units: unitsSchema,
+      lower: lowerSchema,
+      upper: upperSchema,
+    },
+  },
+  async ({ startA, endA, startB, endB, units: unitsIn, lower: lowerIn, upper: upperIn }) => {
+    try {
+      const { units, lower, upper } = resolveThresholdInputs({ units: unitsIn, lower: lowerIn, upper: upperIn });
+      const thresholds = getThresholds(units, lower, upper);
+      const unitLabel = units === 'mgdl' ? 'mg/dL' : 'mmol/L';
+      const summarise = async (s, e) => {
+        const bundle = await getProcessedRange(assertIsoDate(s, 'start'), assertIsoDate(e, 'end'));
+        if (!bundle.timeline.length) return null;
+        return computeSummary(bundle.timeline, bundle.stats, bundle.settingsHistory, thresholds, unitLabel, 'exact', bundle.dailyInsulin);
+      };
+      const a = await summarise(startA, endA);
+      const b = await summarise(startB, endB);
+      if (!a || !b) {
+        return errorResult(
+          'No CGM/bolus data for ' + (!a && !b ? 'either window' : !a ? 'period A' : 'period B') +
+          ', so there is nothing to compare. Check the dates.'
+        );
+      }
+      return jsonResult(comparePeriods(a, b));
+    } catch (err) {
+      return errorResult(err.message);
+    }
+  }
+);
+
 // --- get_daily_insulin ----------------------------------------------------
 server.registerTool(
   'get_daily_insulin',
@@ -525,7 +585,8 @@ server.registerTool(
             'Meal Bolus',
             'Manual Correction Bolus',
             'System Correction Bolus',
-            'Meal With Correction Bolus'
+            'Meal With Correction Bolus',
+            'Manual Meal Bolus'
           ])
         )
         .optional()
@@ -534,7 +595,9 @@ server.registerTool(
           '(use these exact strings): "Meal Bolus" (carb-only dose), ' +
           '"Manual Correction Bolus" (user-initiated correction for a high), ' +
           '"System Correction Bolus" (algorithm-initiated correction), ' +
-          '"Meal With Correction Bolus" (combined carb + correction dose). ' +
+          '"Meal With Correction Bolus" (combined carb + correction dose), ' +
+          '"Manual Meal Bolus" (user-entered carbs with a hand-set dose, not a ' +
+          'calculator suggestion). ' +
           'Provide one or more to combine, e.g. ["Manual Correction Bolus", ' +
           '"System Correction Bolus"]. Omit or leave empty to return all classes.'
         ),
@@ -1739,7 +1802,8 @@ const GATED_MODULES = [
           description:
             'How much of the window CamAPS FX spent in each of its own operating ' +
             'modes: automatic (closed-loop dosing), manual, easeOff, boost, liberty, ' +
-            'and attempting (the algorithm trying to resume closed-loop control). ' +
+            'liberty (the fully closed-loop mode: no carb counting or meal ' +
+            'boluses), and attempting (the algorithm trying to resume closed-loop control). ' +
             'This is CamAPS-specific — it only appears at all for an account whose ' +
             'data has ever shown it, which is why this tool is not always present.\n\n' +
             'UNLIKE every other tool here, this makes a LIVE call to Glooko every ' +
@@ -1887,7 +1951,9 @@ const GATED_MODULES = [
             'Returns: window, unit, and distribution with tenthPercentile/' +
             'twentyFifthPercentile/median/seventyFifthPercentile/ninetiethPercentile ' +
             '(all in the configured unit), stdDev (a spread, converted with no ' +
-            'offset), averageBg, readingsPerDay, incompleteReadings, and ' +
+            'offset), averageBg, min/max (the window\'s lowest and highest ' +
+            'glucose, inferred from the field names), readingsPerDay, ' +
+            'incompleteReadings, and ' +
             'hasPrimeDeviceData. Any field Glooko didn\'t populate comes back null. ' +
             'Returns distribution: null (not an error) if Glooko has nothing for ' +
             'this exact window.',

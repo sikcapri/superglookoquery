@@ -9,6 +9,9 @@ import {
   extractGlucoseDistribution,
   extractMealLoggingStats,
   extractDeviceNames,
+  extractCgmDevices,
+  cgmNameForEpoch,
+  comparePeriods,
   getActiveSettings,
 } from '../src/analytics.js';
 
@@ -271,6 +274,13 @@ test('extractGlucoseDistribution returns null for the real all-zero/no-device-da
   assert.equal(extractGlucoseDistribution(stats), null);
 });
 
+test('extractGlucoseDistribution returns real data even when hasPrimeDeviceData is false', () => {
+  const d = extractGlucoseDistribution({ median: 7.2, averageBg: 7.5, stdDev: 0, hasPrimeDeviceData: false });
+  assert.equal(d.median, 7.2);
+  assert.equal(d.averageBg, 7.5);
+  assert.equal(d.stdDev, null, 'a 0 stdDev is treated as absent');
+});
+
 test('extractGlucoseDistribution still returns real data when genuinely populated, even with hasPrimeDeviceData absent', () => {
   const d = extractGlucoseDistribution({ median: 6.8, stdDev: 1.2 });
   assert.equal(d.median, 6.8);
@@ -434,4 +444,88 @@ test('getActiveSettings normalises targetBg valueLow/valueHigh alongside value f
     if (prevUnit === undefined) delete process.env.GLOOKO_GLUCOSE_UNIT;
     else process.env.GLOOKO_GLUCOSE_UNIT = prevUnit;
   }
+});
+
+// Bolus classification: CamAPS FX omits insulinRecommendationForCorrection and
+// carbsInput rather than sending 0, which used to leave nearly every one of
+// its boluses as 'Unknown'.
+function classOf(b) {
+  const raw = { series: { cgmHigh: [], cgmLow: [], cgmNormal: [], deliveredBolus: [{ x: 1000, y: 1, insulinDelivered: 1, insulinProgrammed: 1, ...b }] } };
+  return processUnifiedGlookoData(raw)[0].class;
+}
+
+test('bolus class: calculator-suggested carb dose with the correction field omitted is a Meal Bolus', () => {
+  assert.equal(classOf({ isManual: false, carbsInput: 40, totalInsulinRecommendation: 4 }), 'Meal Bolus');
+});
+
+test('bolus class: user-entered carb dose is a Manual Meal Bolus, not Unknown', () => {
+  assert.equal(classOf({ isManual: true, carbsInput: 30 }), 'Manual Meal Bolus');
+});
+
+test('bolus class: manual dose with no carbs (field absent) is a Manual Correction Bolus', () => {
+  assert.equal(classOf({ isManual: true }), 'Manual Correction Bolus');
+});
+
+test('bolus class: algorithm dose with no carbs but a recommendation is a System Correction Bolus', () => {
+  assert.equal(classOf({ isManual: false, totalInsulinRecommendation: 0.5 }), 'System Correction Bolus');
+});
+
+test('bolus class: carbs plus a positive correction recommendation is Meal With Correction', () => {
+  assert.equal(classOf({ isManual: false, carbsInput: 40, insulinRecommendationForCorrection: 1 }), 'Meal With Correction Bolus');
+});
+
+test('bolus class: Omnipod-style explicit zeros still classify as before', () => {
+  assert.equal(classOf({ isManual: false, carbsInput: 40, insulinRecommendationForCorrection: 0 }), 'Meal Bolus');
+  assert.equal(classOf({ isManual: true, carbsInput: 0 }), 'Manual Correction Bolus');
+});
+
+// CGM device labelling across a sensor switch.
+const DEVICES = {
+  devices: [
+    { deviceClassification: 'cgm_device', properties: { cgmModel: 'Dexcom G7' }, lastSyncTimestamp: '2026-10-28T00:00:00.000Z' },
+    { deviceClassification: 'pump', properties: { pumpModel: 'YpsoPump' }, lastSyncTimestamp: '2026-10-28T00:00:00.000Z' },
+    { deviceClassification: 'cgm_device', properties: { cgmModel: 'FreeStyle Libre 3' }, lastSyncTimestamp: '2026-10-25T12:00:00.000Z' },
+  ],
+};
+
+test('extractCgmDevices lists only CGMs, oldest sync first', () => {
+  const devs = extractCgmDevices(DEVICES);
+  assert.deepEqual(devs.map((d) => d.name), ['FreeStyle Libre 3', 'Dexcom G7']);
+});
+
+test('cgmNameForEpoch labels readings with the device that was syncing at the time', () => {
+  const devs = extractCgmDevices(DEVICES);
+  const at = (iso) => Date.parse(iso) / 1000;
+  assert.equal(cgmNameForEpoch(devs, at('2026-10-01T00:00:00.000Z')), 'FreeStyle Libre 3');
+  assert.equal(cgmNameForEpoch(devs, at('2026-10-27T00:00:00.000Z')), 'Dexcom G7');
+  assert.equal(cgmNameForEpoch(devs, at('2026-11-05T00:00:00.000Z')), 'Dexcom G7', 'newer than every sync falls back to the latest device');
+});
+
+test('cgmNameForEpoch returns null when the account lists no CGM', () => {
+  assert.equal(cgmNameForEpoch(extractCgmDevices({ devices: [] }), 1000), null);
+  assert.equal(cgmNameForEpoch(extractCgmDevices(null), 1000), null);
+});
+
+test('extractGlucoseDistribution includes min and max, converted', () => {
+  const d = extractGlucoseDistribution({ median: 7.0, min: 3.5, max: 15 }, 'mgdl');
+  assert.ok(Math.abs(d.min - 63) < 1);
+  assert.ok(Math.abs(d.max - 270) < 1);
+  assert.equal(extractGlucoseDistribution({ median: 7.0, min: 0, max: 0 }).min, null);
+});
+
+test('comparePeriods returns both periods and B-minus-A deltas, null where a side is missing', () => {
+  const mk = (tir, basal, carbs) => ({
+    unit: 'mmol/L',
+    reportRange: { start: 's', end: 'e', days: 7 },
+    glucoseControl: { averageBG: 7, gmiEstimatedA1c: 6.5, stdDev: 2, coefficientOfVariation: 30, timeInRange: tir, timeLow: 2, timeHigh: 100 - tir - 2, cgmReadingCount: 1000 },
+    insulin: { observedDays: 7, bolusUnitsPerDay: 10, bolusEventCount: 28, averageBasalUnitsPerDay: basal, basalPercent: 50 },
+    carbs: carbs == null ? undefined : { carbsPerDay: carbs },
+  });
+  const r = comparePeriods(mk(70, 20, 150), mk(80, 22, null));
+  assert.equal(r.delta.timeInRange, 10);
+  assert.equal(r.delta.averageBasalUnitsPerDay, 2);
+  assert.equal(r.delta.totalUnitsPerDay, 2);
+  assert.equal(r.delta.bolusEventsPerDay, 0);
+  assert.equal(r.delta.carbsPerDay, null, 'no carbs in period B means no delta, not a made-up zero');
+  assert.equal(r.periodA.bolusEventsPerDay, 4);
 });
